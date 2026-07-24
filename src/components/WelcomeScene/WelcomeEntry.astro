@@ -1,0 +1,1020 @@
+---
+/**
+ * WelcomeEntry — Cinematic entrance to Runas na Mesa.
+ *
+ * "Da Tempestade para a Taverna"
+ *
+ * A narrative experience in 7 acts, driven by LIGHT as the transition mechanic:
+ *
+ *   TEMPESTADE → LUZ APARECE → PORTA → ABERTURA → TRAVESSIA → TAVERNA → SITE
+ *
+ * The light itself carries the user from the cold storm into the warm tavern.
+ * No fade-to-black. No loading bar. The light IS the transition.
+ */
+import { WELCOME_CONFIG } from '../../config/welcome.config';
+---
+
+<div class="entry" id="entry-root"
+  data-t-storm={WELCOME_CONFIG.timing.stormAlone}
+  data-t-light={WELCOME_CONFIG.timing.lightAppears}
+  data-t-approach={WELCOME_CONFIG.timing.cameraApproach}
+  data-t-door={WELCOME_CONFIG.timing.doorVisible}
+  data-t-idle={WELCOME_CONFIG.timing.doorIdle}
+  data-t-open={WELCOME_CONFIG.timing.doorOpening}
+  data-t-invade={WELCOME_CONFIG.timing.lightInvades}
+  data-t-cross={WELCOME_CONFIG.timing.crossing}
+  data-t-tavern={WELCOME_CONFIG.timing.tavernReveal}
+  data-t-settle={WELCOME_CONFIG.timing.cameraAdjust}
+  data-t-pause={WELCOME_CONFIG.timing.pauseMoment}>
+
+  <!-- LAYER 1: Full-screen canvas for snow particles -->
+  <canvas id="snow-canvas" class="snow-canvas" aria-hidden="true"></canvas>
+
+  <!-- LAYER 2: Background scene (mountains, horizon) -->
+  <div class="bg-scene" aria-hidden="true">
+    <div class="mountains">
+      <div class="mountain mountain--l"></div>
+      <div class="mountain mountain--r"></div>
+    </div>
+    <div class="snow-floor"></div>
+  </div>
+
+  <!-- LAYER 3: Distant warm beacon (appears during act 2) -->
+  <div class="beacon" id="beacon" aria-hidden="true"></div>
+
+  <!-- LAYER 4: The door (interactive focal point) -->
+  <div class="door-wrapper" id="door-wrapper">
+    <div class="door-shadow" aria-hidden="true"></div>
+    <div class="arch" aria-hidden="true">
+      <div class="arch-stone"></div>
+    </div>
+
+    <button class="door" id="door-btn" type="button" aria-label="Abrir a porta e entrar na taverna">
+      <!-- Left leaf -->
+      <span class="leaf leaf--l" id="leaf-l">
+        <span class="planks"></span>
+        <span class="band band--t"></span>
+        <span class="band band--b"></span>
+        <span class="rune-r">ᚱ</span>
+        <span class="ring"></span>
+      </span>
+      <!-- Right leaf -->
+      <span class="leaf leaf--r" id="leaf-r">
+        <span class="planks"></span>
+        <span class="band band--t"></span>
+        <span class="band band--b"></span>
+        <span class="rune-m">ᛗ</span>
+        <span class="ring"></span>
+      </span>
+
+      <!-- Center gap glow -->
+      <span class="center-glow" aria-hidden="true"></span>
+    </button>
+
+    <!-- Door prompt -->
+    <p class="door-hint" id="door-hint">ABRIR A PORTA</p>
+  </div>
+
+  <!-- LAYER 5: The Light (the core transition mechanism) -->
+  <div class="light-overlay" id="light-overlay" aria-hidden="true">
+    <div class="light-core" id="light-core"></div>
+    <div class="light-ray ray--1"></div>
+    <div class="light-ray ray--2"></div>
+    <div class="light-ray ray--3"></div>
+  </div>
+
+  <!-- LAYER 6: Tavern interior (appears after crossing) -->
+  <div class="tavern" id="tavern" aria-hidden="true">
+    <div class="tavern-bg"></div>
+    <div class="beam beam--l"></div>
+    <div class="beam beam--r"></div>
+    <div class="hearth" id="hearth">
+      <div class="fire-glow" id="fire-glow"></div>
+      <div class="flame flame--1"></div>
+      <div class="flame flame--2"></div>
+      <div class="flame flame--3"></div>
+    </div>
+    <div class="table"></div>
+    <div class="stool stool--l"></div>
+    <div class="stool stool--r"></div>
+    <div class="shelf shelf--l">
+      <span class="bottle"></span>
+      <span class="bottle"></span>
+    </div>
+    <div class="shelf shelf--r">
+      <span class="book"></span>
+      <span class="book"></span>
+    </div>
+    <div class="window window--l" aria-hidden="true">
+      <span class="moon"></span>
+    </div>
+    <div class="window window--r" aria-hidden="true"></div>
+
+    <!-- Dust motes -->
+    <div class="dust" id="dust"></div>
+  </div>
+
+  <!-- LAYER 7: Narrative text (minimal, appears only when needed) -->
+  <p class="narr-text" id="narr-text" aria-live="polite"></p>
+
+  <!-- LAYER 8: Controls -->
+  <div class="controls">
+    <button class="ctrl-btn" id="skip-btn" type="button" aria-label="Pular introdução">
+      PULAR
+    </button>
+    <button class="ctrl-btn sound-btn" id="sound-btn" type="button" aria-label="Ativar som" aria-pressed="false">
+      <span class="snd-icon" aria-hidden="true"></span>
+      <span class="snd-lbl">SOM</span>
+    </button>
+  </div>
+
+  <!-- Screen reader region -->
+  <div class="sr-only" id="sr-region" aria-live="assertive" aria-atomic="true"></div>
+
+  <!-- Hot zone overlay for door click (only active during door-idle) -->
+  <div class="click-zone" id="click-zone" aria-hidden="true"></div>
+</div>
+
+<style>
+  /* ═══════════════════════════════════════════════
+     BASE — fullscreen, dark, no scrolling
+     ═══════════════════════════════════════════════ */
+  :global(html), :global(body) {
+    width: 100%; height: 100%;
+    overflow: hidden; margin: 0; padding: 0;
+  }
+
+  .entry {
+    position: fixed; inset: 0;
+    isolation: isolate;
+    overflow: hidden;
+    background: #040A12;
+    font-family: 'Cinzel', Georgia, serif;
+    user-select: none;
+    z-index: 9999;
+    color: #eadbc5;
+    cursor: default;
+  }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 1 — Snow canvas
+     ═══════════════════════════════════════════════ */
+  .snow-canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block; z-index: 1;
+    pointer-events: none;
+  }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 2 — Background scene (mountains, floor)
+     ═══════════════════════════════════════════════ */
+  .bg-scene {
+    position: absolute; inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.6;
+    transition: opacity 4s ease;
+  }
+  [data-state="tavern"] .bg-scene { opacity: 0; }
+
+  .mountains { position: absolute; inset: 0; }
+  .mountain {
+    position: absolute; bottom: 10%;
+    width: 70%; height: 75%;
+    background: linear-gradient(140deg, #060C18, #0B1624 50%, #040810);
+  }
+  .mountain--l { left: -28%; clip-path: polygon(0 100%, 15% 48%, 28% 60%, 48% 25%, 60% 50%, 78% 36%, 100% 100%); }
+  .mountain--r { right: -26%; clip-path: polygon(0 100%, 18% 46%, 35% 56%, 55% 15%, 68% 48%, 82% 36%, 100% 100%); }
+
+  .snow-floor {
+    position: absolute;
+    inset: 65% -10% -10%;
+    background: radial-gradient(ellipse at 50% 0%, #1D2A33, #0A121C 40%, #040A12);
+    transform: perspective(400px) rotateX(55deg);
+    transform-origin: top;
+  }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 3 — Distant beacon (act 2)
+     ═══════════════════════════════════════════════ */
+  .beacon {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 6vmin; aspect-ratio: 0.6;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: #e8843a;
+    box-shadow: 0 0 20px 6px rgba(232, 132, 58, 0.4),
+                0 0 80px 30px rgba(232, 132, 58, 0.1);
+    opacity: 0;
+    z-index: 2;
+    transition: opacity 3s ease, transform 4s ease;
+    pointer-events: none;
+  }
+  .beacon.visible { opacity: 0.5; }
+  .beacon.grow { transform: translate(-50%, -50%) scale(1.8); opacity: 0.9; }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 4 — The Door (3D CSS)
+     ═══════════════════════════════════════════════ */
+  .door-wrapper {
+    position: absolute;
+    left: 50%; top: 50%;
+    z-index: 4;
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+    transition: transform 3.5s cubic-bezier(0.22, 0.7, 0.22, 1), opacity 2s ease;
+    pointer-events: none;
+  }
+  .door-wrapper.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .door-shadow {
+    position: absolute;
+    left: -12%; top: -6%;
+    width: 124%; height: 112%;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.6), transparent 70%);
+    z-index: -1;
+  }
+
+  /* Stone arch */
+  .arch {
+    position: absolute;
+    left: -20%; top: -18%;
+    width: 140%; height: 130%;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .arch-stone {
+    width: 100%; height: 100%;
+    border: clamp(18px, 2.8vw, 42px) solid #1a1e1d;
+    border-bottom: none;
+    border-radius: 50% 50% 0 0 / 60% 60% 0 0;
+    background: repeating-conic-gradient(from 260deg at 50% 100%, #262a28 0 6deg, #141817 6deg 8deg, #2e3230 8deg 14deg);
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 12px 28px rgba(0,0,0,0.7);
+    filter: drop-shadow(0 8px 16px #00000055);
+  }
+
+  /* Door button */
+  .door {
+    position: relative;
+    width: clamp(160px, 20vw, 300px);
+    height: min(58vh, 520px);
+    padding: 0; border: none; outline: none;
+    background: transparent;
+    perspective: 900px;
+    cursor: pointer;
+    display: block;
+  }
+
+  /* Door leaves */
+  .leaf {
+    position: absolute; top: 0;
+    width: 50.5%; height: 100%;
+    background: linear-gradient(135deg, #1a0d08, #3d1f10 40%, #2a140b 70%, #120906);
+    border: 2px solid #0a0604;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(120, 70, 30, 0.3);
+    will-change: transform;
+    backface-visibility: hidden;
+    overflow: hidden;
+  }
+  .leaf--l {
+    left: 0;
+    transform-origin: left center;
+    border-radius: 50% 0 0 3% / 12% 0 0 2%;
+    transition: transform 2.8s cubic-bezier(0.5, 0.05, 0.15, 1);
+  }
+  .leaf--r {
+    right: 0;
+    transform-origin: right center;
+    border-radius: 0 50% 3% 0 / 0 12% 2% 0;
+    transition: transform 2.8s cubic-bezier(0.5, 0.05, 0.15, 1);
+  }
+
+  /* Planks texture */
+  .planks {
+    position: absolute; inset: 0;
+    opacity: 0.5;
+    background: repeating-linear-gradient(90deg,
+      transparent 0 28%,
+      rgba(4,2,1,0.7) 28.5% 30%,
+      rgba(100,50,20,0.15) 31% 32%
+    );
+  }
+
+  /* Iron bands */
+  .band {
+    position: absolute; left: 6%; right: 6%;
+    height: 4.5%;
+    border: 1px solid #060606;
+    background: linear-gradient(#2d302d, #0b0d0b 40%, #1e201e);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.6);
+  }
+  .band--t { top: 28%; }
+  .band--b { bottom: 22%; }
+
+  /* Runes */
+  .rune-r, .rune-m {
+    position: absolute; top: 42%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(18px, 2.8vw, 38px);
+    color: #D4B06A;
+    text-shadow: 0 0 10px rgba(212,176,106,0.4);
+    opacity: 0.5;
+    transition: opacity 0.4s, text-shadow 0.4s;
+  }
+
+  /* Ring handles */
+  .ring {
+    position: absolute; top: 54%;
+    width: clamp(14px, 2vw, 30px);
+    aspect-ratio: 1;
+    border: clamp(2px, 0.2vw, 4px) solid #1a1c1a;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px #4a4236, 0 3px 4px rgba(0,0,0,0.5);
+    background: #2a2c2a;
+  }
+  .leaf--l .ring { right: 10%; }
+  .leaf--r .ring { left: 10%; }
+
+  /* Center glow (light leaking through gap) */
+  .center-glow {
+    position: absolute;
+    left: 47%; top: 5%;
+    width: 6%; height: 90%;
+    background: linear-gradient(0deg,
+      rgba(255,200,100,0.0),
+      rgba(255,180,80,0.15) 30%,
+      rgba(255,200,100,0.25) 50%,
+      rgba(255,180,80,0.15) 70%,
+      transparent
+    );
+    filter: blur(4px);
+    pointer-events: none;
+    transition: opacity 2s ease;
+    opacity: 0;
+  }
+  .leaf--l[data-open="true"] ~ .leaf--r[data-open="true"] ~ .center-glow,
+  .center-glow.active { opacity: 1; }
+
+  /* Door hint text */
+  .door-hint {
+    position: absolute;
+    bottom: -14%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    font-size: clamp(0.6rem, 0.9vw, 0.75rem);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(239,216,177,0.7);
+    text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    white-space: nowrap;
+  }
+  .door-hint.visible { opacity: 1; }
+
+  /* Hover effect */
+  .door:hover .leaf,
+  .door:focus-visible .leaf {
+    filter: brightness(1.2);
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.7), 0 0 30px rgba(235,151,60,0.25);
+  }
+  .door:hover .rune-r,
+  .door:hover .rune-m,
+  .door:focus-visible .rune-r,
+  .door:focus-visible .rune-m {
+    opacity: 0.9;
+    text-shadow: 0 0 18px #F0D79A;
+  }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 5 — The Light (core transition)
+     ═══════════════════════════════════════════════ */
+  .light-overlay {
+    position: absolute; inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .light-overlay.active { opacity: 1; }
+
+  .light-core {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 40vmax; aspect-ratio: 0.7;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse,
+      rgba(255,230,180,0.95) 0%,
+      rgba(255,180,80,0.6) 20%,
+      rgba(232,132,58,0.3) 40%,
+      transparent 65%
+    );
+    transition: all 3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    filter: blur(8px);
+  }
+
+  .light-ray {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 120%; height: 200%;
+    transform-origin: center;
+    background: linear-gradient(90deg, transparent, rgba(255,200,120,0.04), transparent);
+    mix-blend-mode: screen;
+    animation: ray-sweep 6s ease-in-out infinite alternate;
+  }
+  .ray--1 { transform: translate(-50%, -50%) rotate(-15deg); animation-delay: -2s; }
+  .ray--2 { transform: translate(-50%, -50%) rotate(5deg); animation-delay: 0s; }
+  .ray--3 { transform: translate(-50%, -50%) rotate(25deg); animation-delay: -4s; }
+
+  @keyframes ray-sweep {
+    0% { opacity: 0.3; }
+    100% { opacity: 0.8; }
+  }
+
+  /* Light grows during opening */
+  .light-overlay.invading .light-core {
+    width: 80vmax;
+    filter: blur(12px);
+  }
+  .light-overlay.crossing .light-core {
+    width: 200vmax; height: 200vmax;
+    background: radial-gradient(ellipse,
+      rgba(255,240,210,1) 0%,
+      rgba(255,200,120,0.9) 25%,
+      rgba(232,150,60,0.6) 45%,
+      rgba(200,100,30,0.2) 65%,
+      transparent 85%
+    );
+    filter: blur(20px);
+  }
+  .light-overlay.fading .light-core {
+    opacity: 0;
+    transition: opacity 2s ease;
+  }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 6 — Tavern interior
+     ═══════════════════════════════════════════════ */
+  .tavern {
+    position: absolute; inset: 0;
+    z-index: 3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 3s ease;
+    overflow: hidden;
+  }
+  .tavern.revealed {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .tavern-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 45%, #4a2510, #1a0f0a 35%, #0d0805 70%);
+  }
+  .tavern-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent 0 12%, rgba(0,0,0,0.12) 12.5% 13%),
+                linear-gradient(90deg, rgba(0,0,0,0.5), transparent 25% 75%, rgba(0,0,0,0.5));
+  }
+
+  /* Beams */
+  .beam {
+    position: absolute; top: -10%;
+    width: 5%; height: 120%;
+    background: linear-gradient(90deg, #0d0704, #3a1e0e, #120a06);
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+  }
+  .beam--l { left: 16%; transform: rotate(-2deg); }
+  .beam--r { right: 16%; transform: rotate(2deg); }
+
+  /* Hearth */
+  .hearth {
+    position: absolute;
+    left: 50%; top: 38%;
+    width: min(22vw, 260px);
+    height: min(32vh, 280px);
+    transform: translateX(-50%);
+    border: clamp(14px, 1.8vw, 24px) solid #261d18;
+    border-radius: 50% 50% 0 0;
+    background: radial-gradient(ellipse at 50% 90%, #fff0a0 0% 3%, #e88220 14%, #8a2a0a 30%, #0a0402 50%);
+    box-shadow: 0 0 70px rgba(225, 104, 27, 0.35), inset 0 0 30px #000;
+    overflow: visible;
+  }
+
+  .fire-glow {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 200%; height: 200%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse, rgba(255,150,50,0.15), transparent 60%);
+    filter: blur(20px);
+    animation: glow-pulse 2s ease-in-out infinite alternate;
+  }
+  @keyframes glow-pulse { 0% { opacity: 0.5; } 100% { opacity: 1; } }
+
+  .flame {
+    position: absolute;
+    bottom: 6%; width: 14%;
+    border-radius: 50%;
+    background: linear-gradient(#ffe8a0, #e87220 50%, transparent);
+    transform-origin: bottom;
+    animation: flame-dance 1.2s ease-in-out infinite alternate;
+  }
+  .flame--1 { left: 46%; height: 44%; }
+  .flame--2 { left: 28%; height: 28%; animation-delay: -0.5s; }
+  .flame--3 { left: 62%; height: 34%; animation-delay: -0.9s; }
+
+  @keyframes flame-dance {
+    0% { transform: scaleX(0.85) rotate(-3deg); }
+    100% { transform: scaleX(1.15) rotate(4deg); }
+  }
+
+  /* Table */
+  .table {
+    position: absolute;
+    left: 50%; bottom: -6%;
+    width: min(65vw, 900px);
+    height: 38%;
+    transform: translateX(-50%) perspective(400px) rotateX(56deg);
+    background: repeating-linear-gradient(90deg, #241008 0 15%, #4a220e 15.5% 28%, #1c0c06 28.5% 30%);
+    border: 6px solid #0f0704;
+    box-shadow: 0 -12px 30px rgba(0,0,0,0.5);
+  }
+
+  /* Stools */
+  .stool {
+    position: absolute; bottom: 8%;
+    width: 5vw; height: 14vh;
+    background: linear-gradient(90deg, #1a0d06, #3a1c0c, #160a05);
+    border-radius: 40% 40% 10% 10%;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.5);
+  }
+  .stool--l { left: 23%; }
+  .stool--r { right: 23%; }
+
+  /* Shelves */
+  .shelf {
+    position: absolute; top: 26%;
+    width: 18%; height: 30%;
+    border-block: 10px solid #2a160c;
+    background: repeating-linear-gradient(90deg, #120d0a 0 6%, #6e3a1e 6.5% 9%, #20140b 9.5% 13%);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4);
+  }
+  .shelf--l { left: 3%; }
+  .shelf--r { right: 3%; }
+
+  .bottle, .book {
+    position: absolute; bottom: 10%;
+    width: 22%; height: 60%;
+    background: #4a3520;
+    border-radius: 20%;
+  }
+  .bottle:first-child { left: 10%; } .bottle:last-child { left: 55%; }
+  .book:first-child { left: 10%; } .book:last-child { left: 55%; }
+
+  /* Windows */
+  .window {
+    position: absolute; top: 14%;
+    width: 14%; height: 28%;
+    border: 6px solid #1f1712;
+    border-radius: 20% 20% 0 0;
+    background: linear-gradient(180deg, #1a2535, #0d1420);
+    overflow: hidden;
+  }
+  .window--l { left: 6%; }
+  .window--r { right: 6%; }
+
+  .moon {
+    position: absolute; top: 15%; right: 20%;
+    width: 40%; aspect-ratio: 1;
+    border-radius: 50%;
+    background: #c8d0d8;
+    box-shadow: 0 0 12px rgba(200,208,216,0.2);
+  }
+
+  /* Dust motes */
+  .dust {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, #efc57d 0 1px, transparent 1.5px);
+    background-size: 80px 64px;
+    opacity: 0.08;
+    animation: dust-rise 12s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes dust-rise { to { background-position: 20px -64px; } }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 7 — Narrative text
+     ═══════════════════════════════════════════════ */
+  .narr-text {
+    position: absolute;
+    left: 50%; top: 10%;
+    transform: translateX(-50%);
+    margin: 0;
+    text-align: center;
+    font-size: clamp(0.75rem, 1.2vw, 1rem);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 16px rgba(0,0,0,0.7), 0 0 30px rgba(0,0,0,0.4);
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: none;
+    z-index: 7;
+    color: #F0D79A;
+  }
+  .narr-text.show { opacity: 1; }
+
+  /* ═══════════════════════════════════════════════
+     LAYER 8 — Controls
+     ═══════════════════════════════════════════════ */
+  .controls {
+    position: absolute;
+    z-index: 20;
+    inset: auto 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .ctrl-btn {
+    pointer-events: auto;
+    border: 1px solid rgba(212,176,106,0.2);
+    background: rgba(3,7,10,0.35);
+    backdrop-filter: blur(6px);
+    color: rgba(229,221,207,0.65);
+    font: 500 0.65rem/1 'Cinzel', Georgia, serif;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.5rem 0.9rem;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .ctrl-btn:hover,
+  .ctrl-btn:focus-visible {
+    color: #F0D79A;
+    border-color: #D4B06A;
+    box-shadow: 0 0 10px rgba(212,176,106,0.25);
+  }
+
+  .sound-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .snd-icon {
+    width: 10px; height: 10px;
+    border-left: 4px solid currentColor;
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    position: relative;
+  }
+  .snd-icon::after {
+    content: '';
+    position: absolute;
+    left: 2px; top: -4px;
+    width: 6px; height: 7px;
+    border-right: 1px solid;
+    border-radius: 50%;
+    opacity: 0.2;
+  }
+  .sound-btn[aria-pressed="true"] .snd-icon::after { opacity: 1; }
+
+  /* Click zone (invisible overlay for door interaction) */
+  .click-zone {
+    position: fixed; inset: 0;
+    z-index: 10;
+    cursor: pointer;
+    display: none;
+  }
+  .click-zone.active { display: block; }
+
+  /* Screen reader only */
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ═══════════════════════════════════════════════
+     RESPONSIVE
+     ═══════════════════════════════════════════════ */
+  @media (max-width: 640px) {
+    .door { width: min(55vw, 220px); height: 48vh; }
+    .controls { inset: auto 12px 12px; gap: 8px; }
+    .ctrl-btn { padding: 0.4rem 0.7rem; font-size: 0.55rem; }
+    .tavern .hearth { width: 40vw; height: 24vh; }
+    .shelf { width: 24%; }
+    .window { width: 20%; }
+  }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    .door { height: 70vh; }
+    .door-hint { bottom: -24%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .leaf { transition-duration: 0.3s !important; }
+    .beacon, .light-overlay, .tavern, .door-wrapper, .bg-scene { transition-duration: 0.3s !important; }
+    .flame, .dust, .fire-glow { animation: none !important; }
+  }
+</style>
+
+<script>
+  (async function() {
+    // ── Modules ──
+    const root = document.getElementById('entry-root');
+    if (!root) return;
+
+    // Check cookie
+    const replay = location.search.includes('replay');
+    const hasSeen = (() => {
+      try {
+        const c = document.cookie.split(';').find(s => s.trim().startsWith('rnm_welcome_last_seen='));
+        if (!c) return false;
+        const ts = parseInt(c.split('=')[1], 10);
+        return !isNaN(ts) && (Date.now() - ts) < (2 * 86400000);
+      } catch { return false; }
+    })();
+
+    if (hasSeen && !replay) {
+      location.replace('/index');
+      return;
+    }
+
+    // ── Dynamic imports ──
+    const [{ SnowSystem }, { audioSystem }] = await Promise.all([
+      import('../../lib/snow-system'),
+      import('../../lib/audio-system'),
+    ]);
+
+    // ── DOM refs ──
+    const canvas = document.getElementById('snow-canvas') as HTMLCanvasElement;
+    const beacon = document.getElementById('beacon') as HTMLElement;
+    const doorWrapper = document.getElementById('door-wrapper') as HTMLElement;
+    const leafL = document.getElementById('leaf-l') as HTMLElement;
+    const leafR = document.getElementById('leaf-r') as HTMLElement;
+    const doorHint = document.getElementById('door-hint') as HTMLElement;
+    const lightOverlay = document.getElementById('light-overlay') as HTMLElement;
+    const tavern = document.getElementById('tavern') as HTMLElement;
+    const narrText = document.getElementById('narr-text') as HTMLElement;
+    const skipBtn = document.getElementById('skip-btn') as HTMLButtonElement;
+    const soundBtn = document.getElementById('sound-btn') as HTMLButtonElement;
+    const srRegion = document.getElementById('sr-region') as HTMLElement;
+    const clickZone = document.getElementById('click-zone') as HTMLElement;
+
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const setState = (s: string) => root!.dataset.state = s;
+
+    // ── Snow system ──
+    const snow = new SnowSystem();
+    snow.init(canvas);
+
+    // ── Audio init (first gesture) ──
+    const initAudio = () => {
+      audioSystem.init();
+      audioSystem.setMuted(true, 0);
+      document.removeEventListener('click', initAudio);
+      document.removeEventListener('keydown', initAudio);
+    };
+    document.addEventListener('click', initAudio, { once: true });
+    document.addEventListener('keydown', initAudio, { once: true });
+
+    // ── Timing helper ──
+    const T = (key: string, fallback: number) => {
+      const v = root!.dataset[key];
+      return v ? parseInt(v, 10) : fallback;
+    };
+
+    const wait = (ms: number) => new Promise(r => setTimeout(r, reduced ? Math.min(ms, 80) : ms));
+
+    // ── Light control ──
+    const setLight = (phase: 'off' | 'glow' | 'invade' | 'cross' | 'fade') => {
+      lightOverlay.className = 'light-overlay';
+      if (phase === 'glow') {
+        lightOverlay.classList.add('active');
+      } else if (phase === 'invade') {
+        lightOverlay.classList.add('active', 'invading');
+      } else if (phase === 'cross') {
+        lightOverlay.classList.add('active', 'crossing');
+      } else if (phase === 'fade') {
+        lightOverlay.classList.add('active', 'fading');
+      }
+    };
+
+    // ── Snow controls ──
+    const setSnow = (intensity: number, wind: number, global: number) => {
+      snow.intensity = intensity;
+      snow.windMultiplier = wind;
+      snow.globalAlpha = global;
+    };
+
+    // ── Narr text ──
+    const showNarr = (txt: string) => {
+      narrText!.textContent = txt;
+      narrText!.classList.toggle('show', txt.length > 0);
+    };
+
+    // ── SR announce ──
+    const announce = (msg: string) => { srRegion!.textContent = msg; };
+
+    // ── Finish ──
+    const finish = () => {
+      const now = Date.now();
+      document.cookie = `rnm_welcome_last_seen=${now}; max-age=259200; path=/; SameSite=Lax`;
+      localStorage.setItem('rnm_welcome_completed', String(now));
+      location.replace('/index');
+    };
+
+    // ── Door open animation (spring-like, non-linear) ──
+    const openDoor = (duration: number) => new Promise<void>(resolve => {
+      const start = performance.now();
+      const anim = (now: number) => {
+        const t = Math.min((now - start) / duration, 1);
+        // Spring-ish ease: slow start, fast middle, soft end
+        const p = t < 0.3
+          ? 0.5 * Math.pow(t / 0.3, 2)          // slow start
+          : t < 0.7
+            ? 0.5 + 0.4 * ((t - 0.3) / 0.4)     // fast middle
+            : 0.9 + 0.1 * Math.sin((t - 0.7) / 0.3 * Math.PI / 2); // soft settle
+
+        const angle = p * 82; // degrees
+        leafL.style.transform = `rotateY(-${angle}deg)`;
+        leafR.style.transform = `rotateY(${angle}deg)`;
+
+        // Center glow appears as door opens
+        const glowP = Math.min(1, p * 1.5);
+        (document.querySelector('.center-glow') as HTMLElement)!.style.opacity = String(glowP);
+
+        if (t < 1) requestAnimationFrame(anim);
+        else resolve();
+      };
+      requestAnimationFrame(anim);
+    });
+
+    // ── Main sequence ──
+    const run = async () => {
+      if (reduced) {
+        // Skip to tavern
+        setState('tavern');
+        snow.globalAlpha = 0;
+        snow.intensity = 0;
+        doorWrapper.style.display = 'none';
+        lightOverlay.style.display = 'none';
+        tavern.classList.add('revealed');
+        audioSystem.init();
+        audioSystem.transitionTo('tavern', 500);
+        await wait(600);
+        finish();
+        return;
+      }
+
+      // ── ACT 1: TEMPESTADE (0-4s) ──
+      setState('storm');
+      setSnow(1.0, 1.0, 1.0);
+      audioSystem.init();
+      audioSystem.transitionTo('storm');
+      setLight('off');
+      announce('Tempestade de neve');
+      await wait(T('data-t-storm', 3000));
+
+      // ── ACT 2: LUZ APARECE (4-7s) ──
+      setState('light');
+      beacon.classList.add('visible');
+      setSnow(0.9, 0.85, 0.88);
+      announce('Uma luz aparece na distância');
+      await wait(T('data-t-light', 3000));
+
+      // ── ACT 3: APROXIMAÇÃO (7-11s) ──
+      setState('approach');
+      beacon.classList.add('grow');
+      setSnow(0.8, 0.7, 0.8);
+      announce('Aproximando-se da luz');
+      await wait(T('data-t-approach', 3000));
+
+      // ── ACT 4: PORTA (11-14s) ──
+      setState('door');
+      doorWrapper.classList.add('visible');
+      setSnow(0.7, 0.5, 0.72);
+      setLight('glow');
+      announce('Uma porta surge na tempestade');
+      showNarr('Uma luz na tempestade...');
+      await wait(T('data-t-door', 2000));
+
+      // Door idle — wait for interaction
+      setState('idle');
+      doorHint.classList.add('visible');
+      clickZone.classList.add('active');
+      announce('Clique para abrir a porta');
+
+      await new Promise<void>(resolve => {
+        const handler = (e: Event) => {
+          if (e instanceof KeyboardEvent && e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          document.removeEventListener('keydown', keyHandler);
+          clickZone.classList.remove('active');
+          doorHint.classList.remove('visible');
+          showNarr('');
+          // Enable audio
+          if (!audioSystem.ready) {
+            audioSystem.init();
+          }
+          audioSystem.setMuted(false, 600);
+          soundBtn.setAttribute('aria-pressed', 'true');
+          soundBtn.setAttribute('aria-label', 'Desativar som');
+          audioSystem.playCreak();
+          resolve();
+        };
+        const keyHandler = (e: KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') handler(e);
+        };
+        clickZone.addEventListener('click', handler, { once: true });
+        document.addEventListener('keydown', keyHandler);
+      });
+
+      // ── ACT 5: ABERTURA (14-18s) ──
+      setState('opening');
+      announce('A porta começa a abrir');
+      setLight('invade');
+      setSnow(0.45, 0.35, 0.5);
+
+      await openDoor(2200);
+
+      setSnow(0.3, 0.2, 0.35);
+      setLight('cross');
+      announce('Atravessando a porta');
+      await wait(500);
+
+      // ── ACT 6: TRAVESSIA (18-22s) ──
+      setState('crossing');
+      setSnow(0.08, 0.05, 0.08);
+      audioSystem.transitionTo('door-open');
+      await wait(1000);
+
+      // Light fades — tavern revealed
+      setLight('fade');
+      tavern.classList.add('revealed');
+      setState('tavern');
+      snow.globalAlpha = 0;
+      snow.intensity = 0;
+      announce('A taverna se revela');
+      showNarr('Você encontrou o refúgio.');
+      audioSystem.transitionTo('tavern');
+      await wait(2000);
+
+      // ── ACT 7: TAVERNA (22-32s) ──
+      setLight('off');
+      lightOverlay.style.display = 'none';
+      doorWrapper.style.opacity = '0';
+      setState('tavern');
+      showNarr('');
+      await wait(3000);
+
+      // ── Final: transition to site (32-38s) ──
+      setState('transitions');
+      announce('Pronto para explorar');
+      await wait(3000);
+
+      finish();
+    };
+
+    // ── Skip handler ──
+    skipBtn.addEventListener('click', () => {
+      snow.globalAlpha = 0;
+      snow.intensity = 0;
+      audioSystem.init();
+      audioSystem.transitionTo('tavern', 400);
+      doorWrapper.style.display = 'none';
+      lightOverlay.style.display = 'none';
+      beacon.style.display = 'none';
+      tavern.classList.add('revealed');
+      setTimeout(finish, 600);
+    });
+
+    // ── Sound toggle ──
+    soundBtn.addEventListener('click', () => {
+      audioSystem.init();
+      const muted = audioSystem.toggleMute();
+      soundBtn.setAttribute('aria-pressed', String(!muted));
+      soundBtn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
+    });
+
+    // ── Go ──
+    run();
+  })();
+</script>
