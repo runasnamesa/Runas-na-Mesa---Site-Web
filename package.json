@@ -19,6 +19,8 @@
     "@astrojs/vercel": "^11.0.3",
     "all": "^0.0.0",
     "astro": "^7.0.7",
+    "gsap": "^3.15.0",
+    "particles.js": "^2.0.0",
     "three": "^0.185.1"
   },
   "devDependencies": {
