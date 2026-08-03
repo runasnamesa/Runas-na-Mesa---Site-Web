@@ -1,0 +1,943 @@
+---
+/**
+ * Runas na Mesa — Celestia Door (Genshin Impact style)
+ * Porta celestial com runas e animação de abertura
+ */
+---
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Experiência — Runas na Mesa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <div class="celestia-scene">
+    <!-- Background -->
+    <div class="bg-gradient"></div>
+    <canvas id="stars" class="stars-layer"></canvas>
+    
+    <!-- Celestial Architecture Background -->
+    <div class="celestial-bg">
+      <div class="bg-pillar bg-pillar-1"></div>
+      <div class="bg-pillar bg-pillar-2"></div>
+      <div class="bg-pillar bg-pillar-3"></div>
+      <div class="bg-pillar bg-pillar-4"></div>
+      <div class="bg-structure bg-center"></div>
+      <div class="bg-platform"></div>
+    </div>
+    
+    <!-- Ethereal Clouds -->
+    <div class="ethereal-clouds">
+      <div class="cloud-layer cloud-1"></div>
+      <div class="cloud-layer cloud-2"></div>
+      <div class="cloud-layer cloud-3"></div>
+    </div>
+    
+    <canvas id="particles" class="particles-layer"></canvas>
+    
+    <!-- Celestial Door Structure -->
+    <div class="door-container">
+      <!-- Door Frame with Runes -->
+      <div class="door-frame">
+        <!-- Top Arc -->
+        <div class="frame-arc">
+          <svg class="rune-svg" viewBox="0 0 400 200">
+            <!-- Runic patterns -->
+            <path class="rune-glow" d="M50,180 Q200,20 350,180" fill="none" stroke="url(#glow-gradient)" stroke-width="3"/>
+            <!-- Rune symbols along arc -->
+            <circle class="rune-dot" cx="100" cy="130" r="4"/>
+            <circle class="rune-dot" cx="150" cy="80" r="4"/>
+            <circle class="rune-dot" cx="200" cy="50" r="5"/>
+            <circle class="rune-dot" cx="250" cy="80" r="4"/>
+            <circle class="rune-dot" cx="300" cy="130" r="4"/>
+            
+            <defs>
+              <linearGradient id="glow-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#4a9eff;stop-opacity:0.6" />
+                <stop offset="50%" style="stop-color:#80c0ff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#4a9eff;stop-opacity:0.6" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        
+        <!-- Side Pillars -->
+        <div class="pillar pillar-left"></div>
+        <div class="pillar pillar-right"></div>
+        
+        <!-- Rune circles on sides -->
+        <div class="rune-circle rune-left">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(120, 180, 255, 0.5)" stroke-width="2"/>
+            <circle cx="50" cy="50" r="35" fill="none" stroke="rgba(150, 200, 255, 0.7)" stroke-width="1"/>
+            <path class="rune-symbol" d="M50,20 L50,80 M30,50 L70,50" stroke="rgba(180, 220, 255, 0.8)" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="rune-circle rune-right">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(120, 180, 255, 0.5)" stroke-width="2"/>
+            <circle cx="50" cy="50" r="35" fill="none" stroke="rgba(150, 200, 255, 0.7)" stroke-width="1"/>
+            <circle class="rune-inner" cx="50" cy="50" r="15" fill="rgba(180, 220, 255, 0.3)"/>
+          </svg>
+        </div>
+      </div>
+      
+      <!-- The Door itself (two panels) -->
+      <div class="door-panels">
+        <div class="door-panel door-left">
+          <div class="door-pattern"></div>
+          <div class="door-light"></div>
+        </div>
+        <div class="door-panel door-right">
+          <div class="door-pattern"></div>
+          <div class="door-light"></div>
+        </div>
+        
+        <!-- Center glow when closed -->
+        <div class="door-center-glow"></div>
+      </div>
+      
+      <!-- Floating element symbols (7 elements rotating) -->
+      <div class="elements-orbit">
+        <div class="element-icon element-1">
+          <svg viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="rgba(100, 200, 255, 0.3)" stroke="rgba(150, 220, 255, 0.8)" stroke-width="2"/>
+            <path d="M25,10 L30,22 L25,28 L20,22 Z" fill="rgba(200, 240, 255, 0.9)"/>
+          </svg>
+        </div>
+        <div class="element-icon element-2">
+          <svg viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="rgba(255, 100, 100, 0.3)" stroke="rgba(255, 150, 150, 0.8)" stroke-width="2"/>
+            <path d="M25,15 L28,25 L25,35 L22,25 Z" fill="rgba(255, 200, 200, 0.9)"/>
+          </svg>
+        </div>
+        <div class="element-icon element-3">
+          <svg viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="rgba(100, 255, 200, 0.3)" stroke="rgba(150, 255, 220, 0.8)" stroke-width="2"/>
+            <path d="M15,25 L25,15 L35,25 L25,35 Z" fill="rgba(200, 255, 240, 0.9)"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    
+    <!-- UI -->
+    <div class="ui-corner ui-top-left">
+      <button class="icon-btn power" aria-label="Power">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="ui-corner ui-top-right">
+      <button class="icon-btn settings" aria-label="Settings">
+        <svg width="20" height="20" fill="currentColor">
+          <circle cx="10" cy="10" r="3"/>
+          <path d="M10,1 L10,3 M10,17 L10,19 M1,10 L3,10 M17,10 L19,10 M3.5,3.5 L5,5 M15,15 L16.5,16.5 M3.5,16.5 L5,15 M15,5 L16.5,3.5"/>
+        </svg>
+      </button>
+      <button class="icon-btn save" aria-label="Save">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="14" height="14" rx="1"/>
+          <path d="M7,3 L7,7 L13,7 L13,3"/>
+          <circle cx="10" cy="13" r="2"/>
+        </svg>
+      </button>
+      <button class="icon-btn book" aria-label="Book">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4,3 L16,3 L16,17 L4,17 Z"/>
+          <path d="M8,3 L8,17"/>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- CTA -->
+    <button class="cta" id="cta-btn">
+      <span>CLICK TO BEGIN</span>
+      <div class="cta-underline"></div>
+    </button>
+  </div>
+
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Cinzel', serif;
+    }
+
+    .celestia-scene {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .bg-gradient {
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse at 50% 30%, rgba(100, 150, 255, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 20% 80%, rgba(80, 120, 200, 0.1) 0%, transparent 40%),
+        radial-gradient(ellipse at 80% 70%, rgba(90, 140, 220, 0.1) 0%, transparent 40%),
+        linear-gradient(180deg,
+          #0a1530 0%,
+          #0d1e42 20%,
+          #10274f 40%,
+          #13305c 60%,
+          #163866 80%,
+          #19406e 100%
+        );
+    }
+
+    /* CELESTIAL ARCHITECTURE BACKGROUND */
+    .celestial-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .bg-pillar {
+      position: absolute;
+      bottom: 0;
+      width: 120px;
+      background: linear-gradient(180deg,
+        rgba(40, 80, 140, 0.6) 0%,
+        rgba(30, 60, 110, 0.7) 50%,
+        rgba(20, 45, 85, 0.8) 100%
+      );
+      filter: blur(2px);
+    }
+
+    .bg-pillar-1 {
+      left: 5%;
+      height: 400px;
+      clip-path: polygon(25% 0%, 75% 0%, 80% 100%, 20% 100%);
+      transform: perspective(800px) rotateY(-5deg);
+    }
+
+    .bg-pillar-2 {
+      left: 20%;
+      height: 500px;
+      clip-path: polygon(25% 0%, 75% 0%, 80% 100%, 20% 100%);
+      transform: perspective(800px) rotateY(-2deg);
+    }
+
+    .bg-pillar-3 {
+      right: 20%;
+      height: 480px;
+      clip-path: polygon(25% 0%, 75% 0%, 80% 100%, 20% 100%);
+      transform: perspective(800px) rotateY(2deg);
+    }
+
+    .bg-pillar-4 {
+      right: 5%;
+      height: 420px;
+      clip-path: polygon(25% 0%, 75% 0%, 80% 100%, 20% 100%);
+      transform: perspective(800px) rotateY(5deg);
+    }
+
+    .bg-structure {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      height: 550px;
+      background: linear-gradient(180deg,
+        rgba(35, 70, 120, 0.5) 0%,
+        rgba(25, 55, 100, 0.6) 50%,
+        rgba(20, 45, 85, 0.7) 100%
+      );
+      clip-path: polygon(
+        30% 0%, 70% 0%,
+        75% 10%, 80% 20%, 80% 100%,
+        20% 100%, 20% 20%, 25% 10%
+      );
+      filter: blur(2px);
+    }
+
+    .bg-structure::before {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 150px;
+      background: rgba(50, 90, 150, 0.4);
+      clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+    }
+
+    .bg-platform {
+      position: absolute;
+      bottom: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 200px;
+      background: linear-gradient(180deg,
+        rgba(30, 60, 110, 0.3) 0%,
+        rgba(20, 45, 85, 0.5) 100%
+      );
+      clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+      filter: blur(3px);
+    }
+
+    /* ETHEREAL CLOUDS */
+    .ethereal-clouds {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .cloud-layer {
+      position: absolute;
+      width: 500px;
+      height: 150px;
+      background: radial-gradient(ellipse,
+        rgba(100, 150, 220, 0.2) 0%,
+        rgba(80, 130, 200, 0.15) 30%,
+        transparent 70%
+      );
+      filter: blur(30px);
+      animation: cloudDrift 60s linear infinite;
+    }
+
+    .cloud-1 {
+      top: 20%;
+      left: -10%;
+      animation-duration: 80s;
+    }
+
+    .cloud-2 {
+      top: 40%;
+      right: -10%;
+      animation-duration: 100s;
+      animation-delay: -20s;
+    }
+
+    .cloud-3 {
+      bottom: 30%;
+      left: 20%;
+      animation-duration: 90s;
+      animation-delay: -40s;
+    }
+
+    @keyframes cloudDrift {
+      0% { transform: translateX(-100px); }
+      100% { transform: translateX(calc(100vw + 100px)); }
+    }
+
+    .stars-layer,
+    .particles-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* DOOR CONTAINER */
+    .door-container {
+      position: relative;
+      width: 600px;
+      height: 700px;
+      z-index: 10;
+    }
+
+    /* DOOR FRAME */
+    .door-frame {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .frame-arc {
+      position: absolute;
+      top: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 200px;
+    }
+
+    .frame-arc svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 10px rgba(100, 180, 255, 0.8));
+    }
+
+    .rune-glow {
+      animation: runeFlow 3s ease-in-out infinite;
+    }
+
+    .rune-dot {
+      fill: rgba(180, 220, 255, 0.9);
+      animation: runePulse 2s ease-in-out infinite;
+    }
+
+    .rune-dot:nth-child(3) { animation-delay: 0.2s; }
+    .rune-dot:nth-child(4) { animation-delay: 0.4s; }
+    .rune-dot:nth-child(5) { animation-delay: 0.6s; }
+    .rune-dot:nth-child(6) { animation-delay: 0.8s; }
+    .rune-dot:nth-child(7) { animation-delay: 1s; }
+
+    @keyframes runeFlow {
+      0%, 100% { stroke-dashoffset: 0; }
+      50% { stroke-dashoffset: 20; }
+    }
+
+    @keyframes runePulse {
+      0%, 100% { opacity: 0.6; r: 4; }
+      50% { opacity: 1; r: 6; }
+    }
+
+    /* PILLARS */
+    .pillar {
+      position: absolute;
+      top: 150px;
+      width: 40px;
+      height: 500px;
+      background: linear-gradient(180deg,
+        rgba(60, 100, 150, 0.6) 0%,
+        rgba(40, 80, 130, 0.8) 50%,
+        rgba(30, 60, 110, 0.9) 100%
+      );
+      box-shadow: 
+        inset 0 20px 40px rgba(100, 150, 200, 0.3),
+        0 0 30px rgba(80, 140, 200, 0.4);
+    }
+
+    .pillar-left {
+      left: 0;
+      clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+    }
+
+    .pillar-right {
+      right: 0;
+      clip-path: polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+    }
+
+    /* RUNE CIRCLES */
+    .rune-circle {
+      position: absolute;
+      top: 300px;
+      width: 80px;
+      height: 80px;
+      animation: runeRotate 20s linear infinite;
+    }
+
+    .rune-left {
+      left: -40px;
+    }
+
+    .rune-right {
+      right: -40px;
+      animation-direction: reverse;
+    }
+
+    .rune-circle svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 15px rgba(120, 180, 255, 0.6));
+    }
+
+    .rune-inner {
+      animation: runeInnerPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes runeRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes runeInnerPulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+    }
+
+    /* DOOR PANELS */
+    .door-panels {
+      position: absolute;
+      top: 150px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 500px;
+    }
+
+    .door-panel {
+      position: absolute;
+      top: 0;
+      width: 200px;
+      height: 100%;
+      background: 
+        linear-gradient(135deg,
+          rgba(15, 35, 65, 0.95) 0%,
+          rgba(20, 45, 80, 0.97) 30%,
+          rgba(25, 50, 90, 1) 60%,
+          rgba(20, 45, 80, 0.98) 100%
+        );
+      border: 1px solid rgba(80, 130, 180, 0.3);
+      box-shadow: 
+        inset 0 0 60px rgba(30, 70, 120, 0.4),
+        inset 20px 0 40px rgba(40, 80, 140, 0.2),
+        0 0 40px rgba(50, 100, 160, 0.4),
+        0 10px 60px rgba(0, 0, 0, 0.8);
+      transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(1px);
+    }
+
+    .door-left {
+      left: 0;
+      transform-origin: left center;
+      border-right: 1px solid rgba(100, 150, 200, 0.4);
+    }
+
+    .door-right {
+      right: 0;
+      transform-origin: right center;
+      border-left: 1px solid rgba(100, 150, 200, 0.4);
+    }
+
+    .door-panels.opening .door-left {
+      transform: perspective(1200px) rotateY(-120deg);
+    }
+
+    .door-panels.opening .door-right {
+      transform: perspective(1200px) rotateY(120deg);
+    }
+
+    .door-pattern {
+      position: absolute;
+      inset: 30px 15px;
+      border: 2px solid rgba(100, 160, 220, 0.5);
+      border-radius: 6px;
+      background: 
+        linear-gradient(180deg, 
+          rgba(30, 60, 100, 0.3) 0%, 
+          transparent 20%,
+          transparent 80%,
+          rgba(30, 60, 100, 0.3) 100%
+        ),
+        repeating-linear-gradient(0deg, 
+          transparent 0px, 
+          transparent 30px, 
+          rgba(80, 130, 180, 0.15) 30px, 
+          rgba(80, 130, 180, 0.15) 32px
+        ),
+        repeating-linear-gradient(90deg, 
+          transparent 0px, 
+          transparent 40px, 
+          rgba(80, 130, 180, 0.1) 40px, 
+          rgba(80, 130, 180, 0.1) 41px
+        );
+      box-shadow: 
+        inset 0 0 30px rgba(50, 100, 150, 0.2),
+        inset 0 2px 10px rgba(100, 150, 200, 0.3);
+    }
+
+    .door-pattern::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 60%;
+      border: 1px solid rgba(100, 160, 220, 0.25);
+      border-radius: 4px;
+    }
+
+    .door-light {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle, 
+        rgba(150, 200, 255, 0.8) 0%,
+        rgba(120, 180, 240, 0.4) 40%,
+        transparent 70%
+      );
+      border-radius: 50%;
+      box-shadow: 
+        0 0 20px rgba(150, 200, 255, 0.6),
+        0 0 40px rgba(120, 180, 240, 0.3);
+      animation: doorLightPulse 3s ease-in-out infinite;
+    }
+
+    .door-light::before {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      background: rgba(180, 220, 255, 0.6);
+      border-radius: 50%;
+      box-shadow: inset 0 0 10px rgba(100, 150, 200, 0.8);
+    }
+
+    @keyframes doorLightPulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.2); }
+    }
+
+    .door-center-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 400px;
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(150, 200, 255, 0.8) 30%,
+        rgba(180, 220, 255, 1) 50%,
+        rgba(150, 200, 255, 0.8) 70%,
+        transparent 100%
+      );
+      box-shadow: 0 0 20px rgba(150, 200, 255, 0.8);
+      opacity: 1;
+      transition: opacity 1s ease;
+    }
+
+    .door-panels.opening .door-center-glow {
+      opacity: 0;
+    }
+
+    /* ELEMENT ORBIT */
+    .elements-orbit {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 500px;
+      animation: orbitRotate 15s linear infinite;
+    }
+
+    @keyframes orbitRotate {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .element-icon {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      animation: elementFloat 3s ease-in-out infinite;
+    }
+
+    .element-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 10px currentColor);
+    }
+
+    .element-1 {
+      top: 0%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .element-2 {
+      top: 50%;
+      left: 100%;
+      transform: translate(-50%, -50%);
+      animation-delay: 0.5s;
+    }
+
+    .element-3 {
+      top: 100%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: 1s;
+    }
+
+    @keyframes elementFloat {
+      0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+      50% { transform: translate(-50%, -50%) translateY(-10px); }
+    }
+
+    /* UI */
+    .ui-corner {
+      position: absolute;
+      z-index: 100;
+    }
+
+    .ui-top-left {
+      top: 20px;
+      left: 20px;
+    }
+
+    .ui-top-right {
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      background: rgba(10, 25, 45, 0.5);
+      backdrop-filter: blur(8px);
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .icon-btn:hover {
+      background: rgba(20, 40, 70, 0.8);
+      color: rgba(255, 255, 255, 1);
+      transform: scale(1.08);
+      box-shadow: 0 4px 16px rgba(100, 150, 255, 0.3);
+    }
+
+    .icon-btn.power {
+      background: rgba(30, 10, 10, 0.5);
+    }
+
+    .icon-btn.power:hover {
+      background: rgba(50, 20, 20, 0.8);
+      box-shadow: 0 4px 16px rgba(255, 100, 100, 0.3);
+    }
+
+    /* CTA */
+    .cta {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: transparent;
+      border: none;
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 4px;
+      color: rgba(255, 255, 255, 0.85);
+      text-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(150, 200, 255, 0.4);
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .cta:hover {
+      transform: translateX(-50%) scale(1.05);
+    }
+
+    .cta-underline {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(150, 200, 255, 0.8) 50%,
+        transparent 100%
+      );
+      animation: underlinePulse 2s ease-in-out infinite;
+    }
+
+    @keyframes underlinePulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .door-container {
+        width: 350px;
+        height: 500px;
+      }
+
+      .frame-arc {
+        width: 300px;
+        height: 150px;
+      }
+
+      .door-panels {
+        width: 300px;
+        height: 400px;
+      }
+
+      .door-panel {
+        width: 150px;
+      }
+
+      .elements-orbit {
+        width: 350px;
+        height: 350px;
+      }
+
+      .element-icon {
+        width: 40px;
+        height: 40px;
+      }
+
+      .cta {
+        font-size: 13px;
+        letter-spacing: 3px;
+      }
+    }
+  </style>
+
+  <script>
+    // Stars system
+    const starsCanvas = document.getElementById('stars') as HTMLCanvasElement;
+    const starsCtx = starsCanvas?.getContext('2d');
+
+    if (starsCanvas && starsCtx) {
+      starsCanvas.width = window.innerWidth;
+      starsCanvas.height = window.innerHeight;
+
+      const stars: Array<{x: number; y: number; size: number; opacity: number; speed: number}> = [];
+      
+      for (let i = 0; i < 300; i++) {
+        stars.push({
+          x: Math.random() * starsCanvas.width,
+          y: Math.random() * starsCanvas.height,
+          size: Math.random() * 1.5 + 0.3,
+          opacity: Math.random(),
+          speed: Math.random() * 0.015 + 0.005
+        });
+      }
+
+      function animateStars() {
+        if (!starsCtx || !starsCanvas) return;
+        starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+        
+        for (const star of stars) {
+          star.opacity += star.speed;
+          if (star.opacity >= 1 || star.opacity <= 0) {
+            star.speed *= -1;
+          }
+          
+          starsCtx.beginPath();
+          starsCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          starsCtx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, star.opacity))})`;
+          starsCtx.fill();
+        }
+        
+        requestAnimationFrame(animateStars);
+      }
+
+      animateStars();
+    }
+
+    // Floating particles system
+    const particlesCanvas = document.getElementById('particles') as HTMLCanvasElement;
+    const particlesCtx = particlesCanvas?.getContext('2d');
+
+    if (particlesCanvas && particlesCtx) {
+      particlesCanvas.width = window.innerWidth;
+      particlesCanvas.height = window.innerHeight;
+
+      const particles: Array<{x: number; y: number; size: number; speedY: number; opacity: number}> = [];
+      
+      for (let i = 0; i < 50; i++) {
+        particles.push({
+          x: Math.random() * particlesCanvas.width,
+          y: Math.random() * particlesCanvas.height,
+          size: Math.random() * 3 + 1,
+          speedY: -(Math.random() * 0.5 + 0.2),
+          opacity: Math.random() * 0.5 + 0.3
+        });
+      }
+
+      function animateParticles() {
+        if (!particlesCtx || !particlesCanvas) return;
+        particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
+        
+        for (const p of particles) {
+          p.y += p.speedY;
+          
+          if (p.y < -10) {
+            p.y = particlesCanvas.height + 10;
+            p.x = Math.random() * particlesCanvas.width;
+          }
+          
+          particlesCtx.beginPath();
+          particlesCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          const gradient = particlesCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+          gradient.addColorStop(0, `rgba(150, 200, 255, ${p.opacity})`);
+          gradient.addColorStop(1, 'transparent');
+          particlesCtx.fillStyle = gradient;
+          particlesCtx.fill();
+        }
+        
+        requestAnimationFrame(animateParticles);
+      }
+
+      animateParticles();
+    }
+
+    // Door opening animation
+    const ctaBtn = document.getElementById('cta-btn');
+    const doorPanels = document.querySelector('.door-panels');
+
+    ctaBtn?.addEventListener('click', () => {
+      doorPanels?.classList.add('opening');
+      
+      setTimeout(() => {
+        console.log('Door fully opened - transitioning to main experience');
+        // TODO: Navigate to main experience or fade to white
+      }, 2500);
+    });
+
+    // Button interactions
+    document.querySelectorAll('.icon-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        if (target.classList.contains('power')) {
+          console.log('Power clicked');
+        } else if (target.classList.contains('settings')) {
+          console.log('Settings clicked');
+        } else if (target.classList.contains('save')) {
+          console.log('Save clicked');
+        } else if (target.classList.contains('book')) {
+          console.log('Book clicked');
+        }
+      });
+    });
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      if (starsCanvas) {
+        starsCanvas.width = window.innerWidth;
+        starsCanvas.height = window.innerHeight;
+      }
+      if (particlesCanvas) {
+        particlesCanvas.width = window.innerWidth;
+        particlesCanvas.height = window.innerHeight;
+      }
+    });
+  </script>
+</body>
+</html>

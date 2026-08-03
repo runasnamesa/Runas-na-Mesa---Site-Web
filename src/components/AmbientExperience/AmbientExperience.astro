@@ -1,0 +1,169 @@
+---
+/**
+ * AmbientExperience — Portal celestial (estilo Genshin).
+ * Mar de nuvens · Pilares · Lua · Portão de pedra · Clique para começar
+ */
+---
+
+<div id="ambient-experience" class="celestial" data-phase="idle">
+  <canvas id="stars-canvas" class="celestial__canvas celestial__canvas--stars" aria-hidden="true"></canvas>
+  <canvas id="clouds-canvas" class="celestial__canvas celestial__canvas--clouds" aria-hidden="true"></canvas>
+
+  <div class="celestial__scene" id="celestial-scene">
+    <!-- Céu -->
+    <div class="sky" data-depth="0.1">
+      <div class="sky__gradient"></div>
+      <div class="moon" aria-hidden="true">
+        <div class="moon__disc"></div>
+        <div class="moon__glow"></div>
+        <div class="moon__rays"></div>
+      </div>
+      <div class="sky__wisp sky__wisp--1"></div>
+      <div class="sky__wisp sky__wisp--2"></div>
+    </div>
+
+    <!-- Pilares distantes -->
+    <div class="pillars pillars--far" data-depth="0.25" aria-hidden="true">
+      <div class="pillar" style="--h: 42%; --l: 8%;"></div>
+      <div class="pillar" style="--h: 55%; --l: 18%;"></div>
+      <div class="pillar" style="--h: 38%; --l: 28%;"></div>
+      <div class="pillar" style="--h: 48%; --l: 72%;"></div>
+      <div class="pillar" style="--h: 58%; --l: 82%;"></div>
+      <div class="pillar" style="--h: 40%; --l: 92%;"></div>
+      <div class="bridge bridge--1"></div>
+      <div class="bridge bridge--2"></div>
+    </div>
+
+    <!-- Pilares médios -->
+    <div class="pillars pillars--mid" data-depth="0.45" aria-hidden="true">
+      <div class="pillar pillar--thick" style="--h: 52%; --l: 12%;"></div>
+      <div class="pillar pillar--thick" style="--h: 62%; --l: 22%;"></div>
+      <div class="pillar pillar--thick" style="--h: 50%; --l: 78%;"></div>
+      <div class="pillar pillar--thick" style="--h: 58%; --l: 88%;"></div>
+    </div>
+
+    <!-- Mar de nuvens (camadas CSS + canvas) -->
+    <div class="cloud-sea" data-depth="0.6" aria-hidden="true">
+      <div class="cloud-sea__layer cloud-sea__layer--1"></div>
+      <div class="cloud-sea__layer cloud-sea__layer--2"></div>
+      <div class="cloud-sea__layer cloud-sea__layer--3"></div>
+      <div class="cloud-sea__mist"></div>
+    </div>
+
+    <!-- Caminho e portal -->
+    <div class="path-scene" data-depth="0.85">
+      <div class="stone-platform">
+        <div class="stone-platform__cross"></div>
+        <div class="stone-platform__tiles"></div>
+      </div>
+
+      <div class="stone-path">
+        <div class="stone-path__segment stone-path__segment--1"></div>
+        <div class="stone-path__segment stone-path__segment--2"></div>
+        <div class="stone-path__segment stone-path__segment--3"></div>
+      </div>
+
+      <div class="gateway" id="gateway">
+        <div class="gateway__frame">
+          <div class="gateway__arch"></div>
+          <div class="gateway__column gateway__column--l"></div>
+          <div class="gateway__column gateway__column--r"></div>
+          <div class="gateway__lintel"></div>
+        </div>
+
+        <div class="gateway__door" id="door-panels">
+          <div class="gateway__door-panel gateway__door-panel--l"></div>
+          <div class="gateway__door-panel gateway__door-panel--r"></div>
+          <div class="gateway__carving gateway__carving--top"></div>
+          <div class="gateway__carving gateway__carving--mid"></div>
+          <div class="gateway__carving gateway__carving--bottom"></div>
+          <div class="gateway__seam"></div>
+        </div>
+
+        <div class="gateway__light" id="door-light"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Burst de luz na abertura -->
+  <div class="light-burst" id="light-burst" aria-hidden="true"></div>
+
+  <!-- UI minimalista -->
+  <button
+    type="button"
+    class="ui-btn ui-btn--power"
+    id="ui-power"
+    aria-label="Ativar som"
+    aria-pressed="false"
+  >
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2v10M8.5 4.5a7 7 0 1 0 7 0" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <div class="ui-stack" aria-label="Controles">
+    <button type="button" class="ui-btn ui-btn--round" id="ui-sound" aria-label="Som" aria-pressed="false">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2l-3 4H5v8h4l3 4V2z" fill="currentColor"/>
+        <path d="M16 8c1.5 1.5 1.5 5 0 6.5M18.5 5.5c3 3 3 10 0 13" stroke="currentColor" fill="none" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button type="button" class="ui-btn ui-btn--round" id="ui-skip" aria-label="Pular intro">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="6" width="16" height="14" rx="2" stroke="currentColor" fill="none" stroke-width="1.5"/>
+        <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+    <button type="button" class="ui-btn ui-btn--round" id="ui-exit" aria-label="Ir para o site">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 17l5-5-5-5M11 12h10" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <button type="button" class="begin-bar" id="begin-bar">
+    <span class="begin-bar__text">CLIQUE PARA COMEÇAR</span>
+  </button>
+
+  <!-- Site -->
+  <div class="celestial__site" id="site-layer">
+    <slot />
+  </div>
+
+  <div class="sr-only" id="celestial-sr" aria-live="polite" aria-atomic="true"></div>
+</div>
+
+<style is:global>
+  @import '../../styles/ambient-experience.css';
+</style>
+
+<script>
+  import { CelestialController } from '../../lib/celestial-controller';
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const root = document.getElementById('ambient-experience')!;
+
+  const controller = new CelestialController(
+    {
+      root,
+      scene: document.getElementById('celestial-scene')!,
+      gateway: document.getElementById('gateway')!,
+      doorPanels: document.getElementById('door-panels')!,
+      doorLight: document.getElementById('door-light')!,
+      lightBurst: document.getElementById('light-burst')!,
+      beginBar: document.getElementById('begin-bar') as HTMLButtonElement,
+      siteLayer: document.getElementById('site-layer')!,
+      powerBtn: document.getElementById('ui-power') as HTMLButtonElement,
+      soundBtn: document.getElementById('ui-sound') as HTMLButtonElement,
+      skipBtn: document.getElementById('ui-skip') as HTMLButtonElement,
+      exitBtn: document.getElementById('ui-exit') as HTMLButtonElement,
+      starsCanvas: document.getElementById('stars-canvas') as HTMLCanvasElement,
+      cloudsCanvas: document.getElementById('clouds-canvas') as HTMLCanvasElement,
+      srAnnounce: document.getElementById('celestial-sr')!,
+    },
+    reducedMotion,
+  );
+
+  controller.init();
+  document.addEventListener('astro:before-swap', () => controller.destroy());
+</script>

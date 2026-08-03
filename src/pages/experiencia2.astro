@@ -1,0 +1,691 @@
+---
+/**
+ * Runas na Mesa — Experiência Interativa v2
+ * Recriação precisa da referência visual
+ */
+---
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Experiência — Runas na Mesa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <div class="scene">
+    <!-- Background gradient -->
+    <div class="bg-gradient"></div>
+    
+    <!-- Stars -->
+    <canvas id="stars" class="stars"></canvas>
+    
+    <!-- Moon -->
+    <div class="moon"></div>
+    
+    <!-- Clouds -->
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="cloud cloud-4"></div>
+    <div class="cloud cloud-5"></div>
+    <div class="cloud cloud-6"></div>
+    
+    <!-- Ruins backdrop -->
+    <div class="ruins">
+      <div class="ruin-structure ruin-left"></div>
+      <div class="ruin-structure ruin-center"></div>
+      <div class="ruin-structure ruin-right"></div>
+    </div>
+    
+    <!-- Central pedestal structure -->
+    <div class="pedestal-group">
+      <div class="back-structure"></div>
+      <div class="sword-monument">
+        <div class="sword">
+          <div class="blade"></div>
+          <div class="guard"></div>
+          <div class="handle"></div>
+          <div class="pommel"></div>
+        </div>
+      </div>
+      <div class="platform"></div>
+    </div>
+    
+    <!-- UI corners -->
+    <div class="ui-tl">
+      <button class="icon-btn power" aria-label="Power">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="ui-tr">
+      <button class="icon-btn settings" aria-label="Settings">
+        <svg width="24" height="24" fill="currentColor">
+          <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+        </svg>
+      </button>
+      <button class="icon-btn save" aria-label="Save">
+        <svg width="24" height="24" fill="currentColor">
+          <path d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z"/>
+        </svg>
+      </button>
+      <button class="icon-btn book" aria-label="Book">
+        <svg width="24" height="24" fill="currentColor">
+          <path d="M18,2A2,2 0 0,1 20,4V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V4A2,2 0 0,1 6,2H18M18,4H13V12L10.5,9.75L8,12V4H6V20H18V4Z"/>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- CTA -->
+    <button class="cta" id="cta-btn">
+      <span>CLICK TO BEGIN</span>
+    </button>
+  </div>
+
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Cinzel', serif;
+    }
+
+    /* SCENE */
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .bg-gradient {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg,
+        #0a1832 0%,
+        #112648 20%,
+        #16334f 40%,
+        #1a3d5a 60%,
+        #1d4562 80%,
+        #204d68 100%
+      );
+    }
+
+    /* STARS */
+    .stars {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* MOON */
+    .moon {
+      position: absolute;
+      left: 10%;
+      top: 8%;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%,
+        #ffffff 0%,
+        #e8f4ff 30%,
+        #c0d8f0 60%,
+        #a0c0e0 100%
+      );
+      box-shadow:
+        0 0 80px rgba(200, 230, 255, 0.9),
+        0 0 140px rgba(150, 200, 255, 0.6),
+        inset -20px -20px 50px rgba(80, 120, 180, 0.3);
+      animation: moonGlow 6s ease-in-out infinite;
+    }
+
+    @keyframes moonGlow {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow:
+          0 0 80px rgba(200, 230, 255, 0.9),
+          0 0 140px rgba(150, 200, 255, 0.6),
+          inset -20px -20px 50px rgba(80, 120, 180, 0.3);
+      }
+      50% { 
+        transform: scale(1.03);
+        box-shadow:
+          0 0 100px rgba(200, 230, 255, 1),
+          0 0 180px rgba(150, 200, 255, 0.7),
+          inset -20px -20px 50px rgba(80, 120, 180, 0.3);
+      }
+    }
+
+    /* CLOUDS */
+    .cloud {
+      position: absolute;
+      background: rgba(80, 150, 200, 0.4);
+      border-radius: 200px;
+      filter: blur(25px);
+      opacity: 0.8;
+    }
+
+    .cloud-1 {
+      width: 280px;
+      height: 100px;
+      top: 12%;
+      left: -5%;
+      animation: cloudDrift 120s linear infinite;
+    }
+
+    .cloud-2 {
+      width: 320px;
+      height: 120px;
+      top: 18%;
+      left: 25%;
+      animation: cloudDrift 140s linear infinite;
+      animation-delay: -20s;
+    }
+
+    .cloud-3 {
+      width: 250px;
+      height: 90px;
+      top: 22%;
+      right: 15%;
+      animation: cloudDrift 130s linear infinite;
+      animation-delay: -40s;
+    }
+
+    .cloud-4 {
+      width: 300px;
+      height: 110px;
+      top: 28%;
+      left: 50%;
+      animation: cloudDrift 150s linear infinite;
+      animation-delay: -60s;
+    }
+
+    .cloud-5 {
+      width: 270px;
+      height: 95px;
+      top: 32%;
+      left: 10%;
+      animation: cloudDrift 135s linear infinite;
+      animation-delay: -80s;
+    }
+
+    .cloud-6 {
+      width: 290px;
+      height: 105px;
+      top: 25%;
+      right: -5%;
+      animation: cloudDrift 145s linear infinite;
+      animation-delay: -100s;
+    }
+
+    @keyframes cloudDrift {
+      0% { transform: translateX(-100px); }
+      100% { transform: translateX(calc(100vw + 100px)); }
+    }
+
+    /* RUINS */
+    .ruins {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .ruin-structure {
+      position: absolute;
+      bottom: 18%;
+      width: 220px;
+      height: 350px;
+      background: linear-gradient(180deg,
+        rgba(20, 50, 80, 0.7) 0%,
+        rgba(15, 40, 70, 0.8) 50%,
+        rgba(10, 30, 60, 0.9) 100%
+      );
+      filter: blur(3px);
+      opacity: 0.85;
+    }
+
+    .ruin-left {
+      left: 8%;
+      clip-path: polygon(
+        15% 0%, 25% 0%, 30% 10%, 35% 15%, 35% 100%,
+        0% 100%, 0% 20%, 10% 15%, 10% 10%
+      );
+    }
+
+    .ruin-center {
+      left: 50%;
+      transform: translateX(-50%);
+      height: 400px;
+      width: 240px;
+      clip-path: polygon(
+        20% 0%, 40% 0%, 45% 5%, 50% 8%, 55% 5%, 60% 0%, 80% 0%,
+        85% 10%, 85% 100%, 15% 100%, 15% 10%
+      );
+    }
+
+    .ruin-right {
+      right: 8%;
+      clip-path: polygon(
+        65% 0%, 75% 0%, 85% 10%, 90% 15%, 100% 20%, 100% 100%,
+        65% 100%, 65% 15%, 70% 10%
+      );
+    }
+
+    /* PEDESTAL GROUP */
+    .pedestal-group {
+      position: absolute;
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 450px;
+    }
+
+    .back-structure {
+      position: absolute;
+      bottom: 140px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 180px;
+      height: 280px;
+      background: linear-gradient(180deg,
+        rgba(25, 50, 75, 0.9) 0%,
+        rgba(20, 40, 65, 0.95) 50%,
+        rgba(15, 30, 55, 1) 100%
+      );
+      clip-path: polygon(
+        25% 0%, 75% 0%,
+        80% 5%, 85% 15%, 85% 100%,
+        15% 100%, 15% 15%, 20% 5%
+      );
+      box-shadow: 
+        inset 0 -20px 40px rgba(0, 0, 0, 0.5),
+        0 10px 30px rgba(0, 0, 0, 0.7);
+    }
+
+    /* SWORD */
+    .sword-monument {
+      position: absolute;
+      bottom: 130px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 300px;
+    }
+
+    .sword {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    .blade {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 10px;
+      height: 200px;
+      background: linear-gradient(90deg,
+        rgba(120, 160, 190, 0.9) 0%,
+        rgba(200, 230, 250, 1) 50%,
+        rgba(120, 160, 190, 0.9) 100%
+      );
+      clip-path: polygon(
+        50% 0%, 48% 2%, 45% 100%, 55% 100%, 52% 2%
+      );
+      filter: drop-shadow(0 0 15px rgba(150, 200, 255, 0.6));
+    }
+
+    .blade::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        transparent 100%
+      );
+    }
+
+    .guard {
+      position: absolute;
+      bottom: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70px;
+      height: 12px;
+      background: linear-gradient(180deg,
+        rgba(90, 70, 50, 1) 0%,
+        rgba(60, 50, 40, 1) 100%
+      );
+      border-radius: 2px;
+      box-shadow: 
+        0 4px 8px rgba(0, 0, 0, 0.7),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .handle {
+      position: absolute;
+      bottom: 220px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 16px;
+      height: 60px;
+      background: linear-gradient(90deg,
+        rgba(50, 40, 30, 1) 0%,
+        rgba(80, 65, 50, 1) 50%,
+        rgba(50, 40, 30, 1) 100%
+      );
+      border-radius: 3px;
+      box-shadow: 
+        inset 0 2px 6px rgba(0, 0, 0, 0.6),
+        0 2px 8px rgba(0, 0, 0, 0.7);
+    }
+
+    .pommel {
+      position: absolute;
+      bottom: 280px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 22px;
+      height: 22px;
+      background: radial-gradient(circle,
+        rgba(90, 75, 60, 1) 0%,
+        rgba(60, 50, 40, 1) 100%
+      );
+      border-radius: 50%;
+      box-shadow: 
+        0 3px 10px rgba(0, 0, 0, 0.8),
+        inset 0 -2px 6px rgba(0, 0, 0, 0.6);
+    }
+
+    /* PLATFORM */
+    .platform {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 140px;
+      background: linear-gradient(180deg,
+        rgba(45, 75, 105, 0.95) 0%,
+        rgba(35, 60, 90, 0.97) 50%,
+        rgba(25, 45, 75, 1) 100%
+      );
+      clip-path: polygon(
+        15% 0%, 85% 0%,
+        100% 100%, 0% 100%
+      );
+      box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.8),
+        inset 0 -10px 30px rgba(0, 0, 0, 0.5);
+      transform: translateX(-50%) perspective(800px) rotateX(65deg);
+      transform-origin: bottom center;
+    }
+
+    .platform::before {
+      content: '';
+      position: absolute;
+      top: 10%;
+      left: 10%;
+      right: 10%;
+      height: 3px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(70, 100, 130, 0.6) 50%,
+        transparent 100%
+      );
+    }
+
+    .platform::after {
+      content: '';
+      position: absolute;
+      inset: 20px;
+      background: linear-gradient(135deg,
+        rgba(60, 90, 120, 0.3) 0%,
+        transparent 50%
+      );
+    }
+
+    /* UI CORNERS */
+    .ui-tl, .ui-tr {
+      position: absolute;
+      z-index: 100;
+    }
+
+    .ui-tl {
+      top: 20px;
+      left: 20px;
+    }
+
+    .ui-tr {
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      width: 48px;
+      height: 48px;
+      border: none;
+      background: rgba(10, 25, 45, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        inset 0 1px 2px rgba(255, 255, 255, 0.05);
+    }
+
+    .icon-btn:hover {
+      background: rgba(20, 40, 70, 0.8);
+      color: rgba(255, 255, 255, 1);
+      transform: scale(1.08);
+      box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(100, 150, 255, 0.3);
+    }
+
+    .icon-btn.power {
+      background: rgba(30, 10, 10, 0.6);
+    }
+
+    .icon-btn.power:hover {
+      background: rgba(50, 20, 20, 0.8);
+      box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.4),
+        0 0 20px rgba(255, 100, 100, 0.3);
+    }
+
+    /* CTA */
+    .cta {
+      position: absolute;
+      bottom: 8%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: transparent;
+      border: none;
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: 4px;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(150, 200, 255, 0.4);
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.3s ease;
+      animation: ctaPulse 3s ease-in-out infinite;
+    }
+
+    .cta:hover {
+      transform: translateX(-50%) scale(1.05);
+      text-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.8),
+        0 0 30px rgba(150, 200, 255, 0.6);
+    }
+
+    @keyframes ctaPulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 1; }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .moon {
+        width: 120px;
+        height: 120px;
+        left: 8%;
+        top: 5%;
+      }
+
+      .ruin-structure {
+        width: 150px;
+        height: 250px;
+      }
+
+      .pedestal-group {
+        width: 350px;
+        height: 350px;
+      }
+
+      .back-structure {
+        width: 130px;
+        height: 200px;
+        bottom: 100px;
+      }
+
+      .sword-monument {
+        bottom: 95px;
+        height: 220px;
+      }
+
+      .blade {
+        height: 150px;
+        width: 8px;
+      }
+
+      .guard {
+        bottom: 150px;
+        width: 50px;
+      }
+
+      .handle {
+        bottom: 165px;
+        height: 45px;
+      }
+
+      .pommel {
+        bottom: 210px;
+      }
+
+      .platform {
+        width: 350px;
+        height: 100px;
+      }
+
+      .icon-btn {
+        width: 42px;
+        height: 42px;
+      }
+
+      .cta {
+        font-size: 14px;
+        letter-spacing: 3px;
+      }
+    }
+  </style>
+
+  <script>
+    // Stars system
+    const canvas = document.getElementById('stars') as HTMLCanvasElement;
+    const ctx = canvas?.getContext('2d');
+
+    if (canvas && ctx) {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const stars: Array<{x: number; y: number; size: number; opacity: number; speed: number}> = [];
+      
+      for (let i = 0; i < 250; i++) {
+        stars.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height * 0.7,
+          size: Math.random() * 1.5 + 0.3,
+          opacity: Math.random(),
+          speed: Math.random() * 0.02 + 0.005
+        });
+      }
+
+      function drawStars() {
+        if (!ctx || !canvas) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (const star of stars) {
+          star.opacity += star.speed;
+          if (star.opacity >= 1 || star.opacity <= 0) {
+            star.speed *= -1;
+          }
+          
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, star.opacity))})`;
+          ctx.fill();
+        }
+        
+        requestAnimationFrame(drawStars);
+      }
+
+      drawStars();
+
+      window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      });
+    }
+
+    // Button interactions
+    document.getElementById('cta-btn')?.addEventListener('click', () => {
+      console.log('Begin experience');
+      // TODO: Navigate to next scene
+    });
+
+    document.querySelectorAll('.icon-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        if (target.classList.contains('power')) {
+          console.log('Power clicked');
+        } else if (target.classList.contains('settings')) {
+          console.log('Settings clicked');
+        } else if (target.classList.contains('save')) {
+          console.log('Save clicked');
+        } else if (target.classList.contains('book')) {
+          console.log('Book clicked');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

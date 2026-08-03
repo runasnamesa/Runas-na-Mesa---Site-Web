@@ -1,0 +1,318 @@
+---
+/**
+ * Runas na Mesa — Celestia Door (Three.js + GSAP)
+ * Porta celestial 3D real inspirada em Genshin Impact
+ */
+---
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Experiência — Runas na Mesa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body>
+  <canvas id="webgl"></canvas>
+
+  <!-- UI Overlay -->
+  <div class="ui-overlay">
+    <!-- Top Left -->
+    <div class="ui-corner ui-top-left">
+      <button class="icon-btn power" id="power-btn" aria-label="Power">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Top Right -->
+    <div class="ui-corner ui-top-right">
+      <button class="icon-btn settings" aria-label="Settings">
+        <svg width="20" height="20" fill="currentColor">
+          <circle cx="10" cy="10" r="3"/>
+          <path d="M10,1 L10,3 M10,17 L10,19 M1,10 L3,10 M17,10 L19,10 M3.5,3.5 L5,5 M15,15 L16.5,16.5 M3.5,16.5 L5,15 M15,5 L16.5,3.5"/>
+        </svg>
+      </button>
+      <button class="icon-btn save" aria-label="Save">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="14" height="14" rx="1"/>
+          <path d="M7,3 L7,7 L13,7 L13,3"/>
+          <circle cx="10" cy="13" r="2"/>
+        </svg>
+      </button>
+      <button class="icon-btn book" aria-label="Book">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4,3 L16,3 L16,17 L4,17 Z"/>
+          <path d="M8,3 L8,17"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- CTA -->
+    <button class="cta" id="cta-btn">
+      <span>CLICK TO BEGIN</span>
+      <div class="cta-underline"></div>
+    </button>
+
+    <!-- Loading indicator -->
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <p>Carregando experiência...</p>
+    </div>
+  </div>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Cinzel', serif;
+    }
+
+    #webgl {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    .ui-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .ui-overlay > * {
+      pointer-events: auto;
+    }
+
+    /* UI CORNERS */
+    .ui-corner {
+      position: absolute;
+    }
+
+    .ui-top-left {
+      top: 20px;
+      left: 20px;
+    }
+
+    .ui-top-right {
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border: none;
+      background: rgba(10, 25, 45, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .icon-btn:hover {
+      background: rgba(20, 40, 70, 0.8);
+      color: rgba(255, 255, 255, 1);
+      transform: scale(1.08);
+      box-shadow: 0 4px 16px rgba(100, 150, 255, 0.3);
+    }
+
+    .icon-btn.power {
+      background: rgba(30, 10, 10, 0.6);
+    }
+
+    .icon-btn.power:hover {
+      background: rgba(50, 20, 20, 0.8);
+      box-shadow: 0 4px 16px rgba(255, 100, 100, 0.3);
+    }
+
+    /* CTA */
+    .cta {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: transparent;
+      border: none;
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 4px;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.8),
+        0 0 20px rgba(150, 200, 255, 0.5);
+      cursor: pointer;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .cta:hover {
+      transform: translateX(-50%) scale(1.05);
+    }
+
+    .cta-underline {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(150, 200, 255, 0.8) 50%,
+        transparent 100%
+      );
+      animation: underlinePulse 2s ease-in-out infinite;
+    }
+
+    @keyframes underlinePulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* LOADING */
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: rgba(255, 255, 255, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .loading.hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(150, 200, 255, 0.2);
+      border-top-color: rgba(150, 200, 255, 0.8);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading p {
+      font-size: 14px;
+      letter-spacing: 2px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .ui-corner {
+        top: 12px;
+      }
+
+      .ui-top-left { left: 12px; }
+      .ui-top-right { right: 12px; }
+
+      .icon-btn {
+        width: 40px;
+        height: 40px;
+      }
+
+      .cta {
+        font-size: 13px;
+        letter-spacing: 3px;
+      }
+    }
+  </style>
+
+  <script>
+    import { CelestiaDoor } from '../lib/three/CelestiaDoor';
+
+    const canvas = document.getElementById('webgl') as HTMLCanvasElement;
+    const ctaBtn = document.getElementById('cta-btn');
+    const loading = document.getElementById('loading');
+
+    if (!canvas) {
+      console.error('Canvas not found');
+    } else {
+      // Initialize Three.js scene
+      const celestiaDoor = new CelestiaDoor(canvas);
+      
+      // Start animation loop
+      celestiaDoor.animate();
+
+      // Hide loading after scene is ready
+      setTimeout(() => {
+        loading?.classList.add('hidden');
+      }, 1000);
+
+      // CTA button - open door
+      ctaBtn?.addEventListener('click', () => {
+        celestiaDoor.openDoor();
+        
+        // Hide CTA after clicking
+        if (ctaBtn) {
+          ctaBtn.style.opacity = '0';
+          ctaBtn.style.pointerEvents = 'none';
+        }
+
+        // Navigate after animation
+        setTimeout(() => {
+          console.log('Door fully opened - ready to navigate');
+          // window.location.href = '/index/';
+        }, 2500);
+      });
+
+      // UI buttons
+      document.getElementById('power-btn')?.addEventListener('click', () => {
+        console.log('Power clicked - returning home');
+        // window.location.href = '/';
+      });
+
+      document.querySelector('.settings')?.addEventListener('click', () => {
+        console.log('Settings clicked');
+      });
+
+      document.querySelector('.save')?.addEventListener('click', () => {
+        console.log('Save clicked');
+      });
+
+      document.querySelector('.book')?.addEventListener('click', () => {
+        console.log('Book clicked');
+      });
+
+      // Cleanup on page unload
+      window.addEventListener('beforeunload', () => {
+        celestiaDoor.destroy();
+      });
+    }
+  </script>
+</body>
+</html>
