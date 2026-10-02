@@ -1,15 +1,86 @@
 ---
 /**
- * Abertura da Taverna — inspirada na tela de entrada de Genshin Impact.
- *
- * Roteiro: a nevasca e as frases; uma luz surge; fagulhas douradas saem da
- * tempestade e voam até o contorno de uma porta, que é desenhada em luz,
- * ganha detalhes e se materializa. Ao tocar, o medalhão gira, as folhas se
- * abrem em 3D, a luz invade a tela e a câmera atravessa — e a taverna
+ * Abertura da Taverna — inspirada na tela de entrada de Genshin Impact
+ * (Celestia Door): a porta não existe e, de repente, se MONTA a partir de
+ * fragmentos que brotam do chão e se encaixam de baixo para cima. Aqui ela é
+ * a porta dupla de uma taverna medieval: tábuas de madeira, ferragens
+ * rebitadas, argolas, arco e batentes de pedra com neve. Ao tocar, as folhas
+ * se entreabrem e a luz quente da lareira inunda a tela — e a taverna
  * (/index/) aparece.
  *
- * Tudo em SVG + GSAP + canvas 2D (sem WebGL): leve e fluido no celular.
+ * SVG + GSAP + canvas 2D (sem WebGL): leve e fluido no celular. A geometria
+ * da porta é calculada aqui no build; cada pedra, tábua e ferragem é uma
+ * peça (`.piece`) animada no cliente.
  */
+
+// viewBox 300 × 480. Vão da porta: x 60–240, arco com centro (150, 200).
+const CX = 150;
+const SPRING = 200;
+const R_IN = 90;
+const R_OUT = 117;
+const BOTTOM = 450;
+
+const polar = (r: number, a: number) => [CX + r * Math.cos(a), SPRING - r * Math.sin(a)].map((n) => n.toFixed(2)).join(' ');
+
+// Aduelas do arco (9), com a chave central maior.
+const VOUSSOIRS = 9;
+const gap = 0.012;
+const voussoirs = Array.from({ length: VOUSSOIRS }, (_, i) => {
+  const a0 = Math.PI - (i * Math.PI) / VOUSSOIRS - gap;
+  const a1 = Math.PI - ((i + 1) * Math.PI) / VOUSSOIRS + gap;
+  const key = i === Math.floor(VOUSSOIRS / 2);
+  const outer = key ? R_OUT + 14 : R_OUT;
+  const d = `M${polar(outer, a0)} A${outer} ${outer} 0 0 1 ${polar(outer, a1)} L${polar(R_IN, a1)} A${R_IN} ${R_IN} 0 0 0 ${polar(R_IN, a0)} Z`;
+  return { d, key, order: Math.min(i, VOUSSOIRS - 1 - i) };
+});
+
+// Batentes: 5 pedras de cada lado, alternando largura (cunhais).
+const jambs = Array.from({ length: 5 }, (_, i) => {
+  const y1 = BOTTOM - i * 50;
+  const y0 = y1 - 50 + 1.5;
+  const outer = i % 2 === 0 ? 30 : 38;
+  return [
+    { x: outer, y: y0, w: 60 - outer - 1, h: 48.5, order: i },
+    { x: 241, y: y0, w: 300 - outer - 241, h: 48.5, order: i },
+  ];
+}).flat();
+
+// Tábuas: 3 por folha, cortadas pelo arco (clipPath das folhas).
+const planks = [60, 90, 120, 150, 180, 210].map((x, i) => ({
+  x: x + 0.6,
+  w: 28.8,
+  left: i < 3,
+  // veios ondulados (desenho fixo por tábua, para não mudar a cada build)
+  grain: [0.25, 0.55, 0.8].map((f, k) => {
+    const gx = x + 30 * f;
+    const wave = 2 + ((i + k) % 3);
+    return `M${gx} 100 C${gx + wave} 180 ${gx - wave} 260 ${gx + wave / 2} 330 S${gx - wave} 420 ${gx} 452`;
+  }),
+}));
+
+// Ferragens (dobradiças compridas) e rebites.
+const straps = [218, 392].flatMap((y) => [
+  { y, x0: 60, x1: 136, left: true },
+  { y, x0: 164, x1: 240, left: false },
+]);
+// Neve assentada sobre o arco: dois trechos (a chave do arco fica de fora).
+const snowArc = (from: number, to: number) => {
+  const steps = 14;
+  const top: string[] = [];
+  const bottom: string[] = [];
+  for (let k = 0; k <= steps; k++) {
+    const a = ((from + ((to - from) * k) / steps) * Math.PI) / 180;
+    const bump = 3 + 2.5 * Math.abs(Math.sin(k * 1.7));
+    top.push(polar(R_OUT + bump, a));
+    bottom.unshift(polar(R_OUT - 1.5, a));
+  }
+  return `M${top.join(" L")} L${bottom.join(" L")} Z`;
+};
+const snowCaps = [snowArc(162, 101), snowArc(79, 18)];
+
+const rivets = straps.flatMap((s) =>
+  Array.from({ length: 5 }, (_, k) => ({ x: s.left ? s.x0 + 10 + k * 15 : s.x1 - 10 - k * 15, y: s.y, left: s.left })),
+);
 ---
 
 <div id="welcome-experience" class="welcome-experience">
@@ -20,85 +91,110 @@
 
   <canvas id="snow-canvas" class="fx-canvas fx-canvas--snow"></canvas>
 
-  <!-- Porta: halo, luz interna, folhas (3D) e moldura desenhada em luz. -->
-  <div class="door-stage" id="door-stage" aria-hidden="true">
+  <div class="door-stage" aria-hidden="true">
     <div class="door-float" id="door-float">
-      <div class="door-halo" id="door-halo"></div>
       <div class="door-floor" id="door-floor"></div>
+      <div class="door-halo" id="door-halo"></div>
       <div class="door-inner-light" id="door-inner-light"></div>
 
-      <div class="door-leaf door-leaf--left" id="leaf-left">
-        <svg viewBox="0 0 300 480" class="door-svg">
-          <use href="#leaf-art" clip-path="url(#clip-left)" />
-        </svg>
-      </div>
-      <div class="door-leaf door-leaf--right" id="leaf-right">
-        <svg viewBox="0 0 300 480" class="door-svg">
-          <use href="#leaf-art" clip-path="url(#clip-right)" />
-        </svg>
-      </div>
+      <!-- Folhas (camadas próprias para abrirem em 3D). -->
+      {[true, false].map((left) => (
+        <div class={`door-leaf ${left ? 'door-leaf--left' : 'door-leaf--right'}`} id={left ? 'leaf-left' : 'leaf-right'}>
+          <svg viewBox="0 0 300 480" class="door-svg">
+            <g clip-path={`url(#${left ? 'clip-left' : 'clip-right'})`}>
+              {planks.filter((p) => p.left === left).map((p) => (
+                <g class="piece plank">
+                  <rect x={p.x} y="100" width={p.w} height="352" fill="url(#wood)" />
+                  <g fill="none" stroke="#2a170c" stroke-width="1.1" opacity="0.45">
+                    {p.grain.map((d) => <path d={d} />)}
+                  </g>
+                  <rect x={p.x} y="100" width="2.2" height="352" fill="#7a4a2a" opacity="0.5" />
+                </g>
+              ))}
+            </g>
+            {straps.filter((s) => s.left === left).map((s) => (
+              <g class="piece iron">
+                <rect x={s.x0} y={s.y - 7} width={s.x1 - s.x0} height="14" rx="3" fill="url(#iron)" />
+                <circle cx={s.left ? s.x1 : s.x0} cy={s.y} r="9" fill="url(#iron)" />
+                {rivets.filter((r) => r.left === left && r.y === s.y).map((r) => (
+                  <circle cx={r.x} cy={r.y} r="2.4" fill="#8d8a82" stroke="#1b1b1a" stroke-width="0.6" />
+                ))}
+              </g>
+            ))}
+            <g class="piece handle">
+              <circle cx={left ? 140 : 160} cy="300" r="7" fill="url(#iron)" />
+              <circle class="ring" cx={left ? 140 : 160} cy="313" r="11" fill="none" stroke="#3a3936" stroke-width="3.4" />
+            </g>
+          </svg>
+        </div>
+      ))}
 
       <div class="door-seam" id="door-seam"></div>
+      <div class="door-sill-light" id="door-sill-light"></div>
 
+      <!-- Moldura de pedra (na frente das folhas). -->
       <svg viewBox="0 0 300 480" class="door-svg door-frame" id="door-frame">
         <defs>
-          <linearGradient id="gold-stroke" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="470">
-            <stop offset="0" stop-color="#fff4d6" />
-            <stop offset="0.5" stop-color="#f0c97a" />
-            <stop offset="1" stop-color="#c8963e" />
+          <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#4b2a17" />
+            <stop offset="0.45" stop-color="#6a3d22" />
+            <stop offset="1" stop-color="#3f2313" />
           </linearGradient>
-          <linearGradient id="leaf-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#fbf4e4" />
-            <stop offset="0.6" stop-color="#eadcbc" />
-            <stop offset="1" stop-color="#cdb98f" />
+          <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5c5a55" />
+            <stop offset="0.5" stop-color="#34332f" />
+            <stop offset="1" stop-color="#1d1c1a" />
           </linearGradient>
-          <radialGradient id="medal-fill" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0" stop-color="#fffaf0" />
-            <stop offset="1" stop-color="#e6cf98" />
-          </radialGradient>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-          <clipPath id="clip-left"><path d="M46 470 L46 172 A104 104 0 0 1 150 68 L150 470 Z" /></clipPath>
-          <clipPath id="clip-right"><path d="M254 470 L254 172 A104 104 0 0 0 150 68 L150 470 Z" /></clipPath>
-
-          <!-- Arte das folhas (a mesma nas duas; o recorte separa esquerda/direita). -->
-          <g id="leaf-art">
-            <path d="M46 470 L46 172 A104 104 0 0 1 254 172 L254 470 Z" fill="url(#leaf-fill)" />
-            <g fill="none" stroke="#b8862f" stroke-width="2" opacity="0.9">
-              <path d="M62 455 L62 180 A88 88 0 0 1 238 180 L238 455 Z" />
-              <rect x="76" y="352" width="58" height="90" rx="6" />
-              <rect x="166" y="352" width="58" height="90" rx="6" />
-              <path d="M150 90 L150 470" stroke-width="1.5" />
-              <path d="M88 200 Q150 120 212 200" />
-              <path d="M98 214 Q150 150 202 214" opacity="0.6" />
-            </g>
-            <g transform="translate(150 280)">
-              <circle r="52" fill="url(#medal-fill)" stroke="#b8862f" stroke-width="3" />
-              <circle r="40" fill="none" stroke="#c8963e" stroke-width="1.5" stroke-dasharray="4 6" />
-              <path d="M0 -34 L10 -10 L34 0 L10 10 L0 34 L-10 10 L-34 0 L-10 -10 Z" fill="#d9b158" />
-              <circle r="7" fill="#fff4d6" stroke="#b8862f" stroke-width="2" />
-            </g>
-          </g>
+          <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#8a857c" />
+            <stop offset="1" stop-color="#55514b" />
+          </linearGradient>
+          <clipPath id="clip-left"><path d="M60 452 L60 200 A90 90 0 0 1 150 110 L150 452 Z" /></clipPath>
+          <clipPath id="clip-right"><path d="M240 452 L240 200 A90 90 0 0 0 150 110 L150 452 Z" /></clipPath>
+          <!-- Silhueta da porta em unidades da própria caixa (brilho que passa). -->
+          <clipPath id="door-silhouette" clipPathUnits="objectBoundingBox">
+            <path d="M0.1 0.98 L0.1 0.42 A0.4 0.25 0 0 1 0.9 0.42 L0.9 0.98 Z" />
+          </clipPath>
         </defs>
 
-        <!-- Moldura em luz: duas metades sobem do chão e se encontram no fecho. -->
-        <g fill="none" stroke="url(#gold-stroke)" stroke-linecap="round" filter="url(#glow)">
-          <path class="draw outer" d="M30 470 L30 170 A120 120 0 0 1 150 50" stroke-width="7" />
-          <path class="draw outer" d="M270 470 L270 170 A120 120 0 0 0 150 50" stroke-width="7" />
-          <path class="draw inner" id="inner-arch" d="M46 470 L46 172 A104 104 0 0 1 254 172 L254 470" stroke-width="3" />
-          <path class="draw base" d="M8 470 L292 470" stroke-width="5" />
+        <!-- Soleira -->
+        {[[18, 104], [104, 196], [196, 282]].map(([x0, x1]) => (
+          <g class="piece stone sill">
+            <rect x={x0 + 0.8} y="451" width={x1 - x0 - 1.6} height="20" rx="2" fill="url(#stone)" stroke="#3c3934" stroke-width="1" />
+            <rect x={x0 + 2} y="451" width={x1 - x0 - 4} height="3" fill="#a9a398" opacity="0.6" />
+          </g>
+        ))}
+        <!-- Batentes -->
+        {jambs.map((j) => (
+          <g class="piece stone jamb" data-order={j.order}>
+            <rect x={j.x} y={j.y} width={j.w} height={j.h} rx="2" fill="url(#stone)" stroke="#3c3934" stroke-width="1" />
+            <rect x={j.x + 1.5} y={j.y + 1.5} width={j.w - 3} height="3" fill="#a9a398" opacity="0.5" />
+          </g>
+        ))}
+        <!-- Arco -->
+        {voussoirs.map((v) => (
+          <path
+            class={`piece stone voussoir ${v.key ? 'keystone' : ''}`}
+            data-order={v.order}
+            d={v.d}
+            fill="url(#stone)"
+            stroke="#3c3934"
+            stroke-width="1"
+          />
+        ))}
+        <!-- Neve acumulada (aparece depois da montagem) -->
+        <g class="snow-cap" fill="#f3f6fb">
+          {snowCaps.map((d) => <path d={d} opacity="0.95" />)}
+          <path d="M136 69 Q150 62 164 69 L164 72 L136 72 Z" opacity="0.95" />
+          <path d="M16 452 C40 444 80 446 104 449 C130 444 170 444 196 449 C222 445 262 444 284 452 L284 455 L16 455 Z" opacity="0.85" />
         </g>
-        <g id="arch-gems" fill="#fff4d6" filter="url(#glow)"></g>
-        <path id="keystone" d="M150 30 L166 50 L150 70 L134 50 Z" fill="#fff4d6" stroke="#d9b158" stroke-width="2" filter="url(#glow)" />
       </svg>
 
-      <div class="door-spark" id="door-spark"></div>
+      <div class="door-glint" id="door-glint"></div>
     </div>
   </div>
 
-  <canvas id="mote-canvas" class="fx-canvas fx-canvas--motes"></canvas>
+  <canvas id="fx-canvas" class="fx-canvas fx-canvas--fx"></canvas>
 
   <div class="narrative" id="narrative-text">
     <p class="narrative-line" style="animation-delay: 0.5s;">O vento uiva ao seu redor.</p>
@@ -148,7 +244,6 @@
     --door-w: calc(var(--door-h) * 0.625);
   }
 
-  /* Fundo: montanha nevada */
   .bg-layer { position: absolute; inset: 0; z-index: 1; }
   .bg-mountains {
     position: absolute;
@@ -166,7 +261,7 @@
 
   .fx-canvas { position: absolute; inset: 0; pointer-events: none; }
   .fx-canvas--snow { z-index: 2; }
-  .fx-canvas--motes { z-index: 7; }
+  .fx-canvas--fx { z-index: 7; }
 
   /* Porta */
   .door-stage {
@@ -175,7 +270,7 @@
     z-index: 5;
     display: grid;
     place-items: center;
-    perspective: 1400px;
+    perspective: 1200px;
     pointer-events: none;
   }
   .door-float {
@@ -185,76 +280,86 @@
     transform-style: preserve-3d;
   }
   .door-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .door-halo {
-    position: absolute;
-    left: 50%;
-    top: 45%;
-    width: 260%;
-    height: 170%;
-    transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center, rgba(255, 226, 160, 0.35) 0%, rgba(240, 190, 110, 0.12) 35%, transparent 65%);
-    opacity: 0;
-  }
   .door-floor {
     position: absolute;
     left: 50%;
-    bottom: -6%;
-    width: 190%;
-    height: 22%;
+    bottom: -7%;
+    width: 210%;
+    height: 24%;
     transform: translateX(-50%);
-    background: radial-gradient(ellipse at center, rgba(255, 222, 160, 0.45) 0%, rgba(240, 190, 110, 0.15) 40%, transparent 70%);
+    background: radial-gradient(ellipse at center, rgba(255, 190, 110, 0.4) 0%, rgba(230, 140, 60, 0.14) 40%, transparent 70%);
+    opacity: 0;
+  }
+  .door-halo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 240%;
+    height: 160%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center, rgba(255, 200, 120, 0.22) 0%, rgba(230, 150, 70, 0.08) 40%, transparent 68%);
     opacity: 0;
   }
   .door-inner-light {
     position: absolute;
-    left: 15.3%;
-    right: 15.3%;
-    top: 14%;
-    bottom: 2%;
-    border-radius: 50% 50% 0 0 / 30% 30% 0 0;
-    background: radial-gradient(ellipse at 50% 55%, #fffdf5 0%, #ffe7b0 35%, #f2b866 70%, #c67b2c 100%);
-    box-shadow: 0 0 80px 20px rgba(255, 220, 150, 0.5);
+    left: 20%;
+    right: 20%;
+    top: 23%;
+    bottom: 5.8%;
+    border-radius: 50% 50% 0 0 / 34% 34% 0 0;
+    background: radial-gradient(ellipse at 50% 60%, #fffaf0 0%, #ffe2a8 30%, #ffb45a 65%, #c8641e 100%);
+    box-shadow: 0 0 90px 30px rgba(255, 190, 110, 0.55);
+    /* Atrás do giro das folhas (que entram na casa): senão as cobre em 3D. */
+    transform: translateZ(-70px) scale(1.06);
     opacity: 0;
   }
   .door-leaf {
     position: absolute;
     inset: 0;
-    opacity: 0;
     backface-visibility: hidden;
     will-change: transform;
   }
-  /* Dobradiças nas laterais internas do arco (x = 46 e 254 de 300). */
-  .door-leaf--left { transform-origin: 15.33% 50%; }
-  .door-leaf--right { transform-origin: 84.67% 50%; }
+  /* Dobradiças: x = 60 e 240 de 300. */
+  .door-leaf--left { transform-origin: 20% 50%; }
+  .door-leaf--right { transform-origin: 80% 50%; }
   .door-seam {
     position: absolute;
     left: 50%;
-    top: 14%;
-    bottom: 2%;
-    width: 3px;
-    margin-left: -1.5px;
-    background: linear-gradient(180deg, transparent, #fff8e6 15%, #fff8e6 85%, transparent);
-    box-shadow: 0 0 18px 4px rgba(255, 225, 160, 0.9);
-    transform: scaleY(0);
+    top: 23.5%;
+    bottom: 6%;
+    width: 2px;
+    margin-left: -1px;
+    background: linear-gradient(180deg, transparent, #ffd38a 12%, #ffe6b8 50%, #ffd38a 88%, transparent);
+    box-shadow: 0 0 10px 2px rgba(255, 190, 100, 0.8);
     opacity: 0;
   }
-  .door-frame .draw { opacity: 0; }
-  #keystone { opacity: 0; transform-box: fill-box; transform-origin: center; }
-  .door-spark {
+  .door-sill-light {
     position: absolute;
-    left: 50%;
-    top: 58%;
-    width: 14px;
-    height: 14px;
-    margin: -7px 0 0 -7px;
-    border-radius: 50%;
-    background: #fffaf0;
-    box-shadow: 0 0 20px 8px rgba(255, 230, 170, 0.9), 0 0 60px 24px rgba(240, 190, 110, 0.5);
+    left: 20%;
+    right: 20%;
+    bottom: 5.6%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #ffcf85 15%, #ffe2ae 50%, #ffcf85 85%, transparent);
+    box-shadow: 0 0 14px 4px rgba(255, 180, 90, 0.7);
     opacity: 0;
-    transform: scale(0);
   }
+  .door-glint {
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    top: 16%;
+    bottom: 1%;
+    clip-path: url(#door-silhouette);
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 245, 220, 0.55) 48%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 245, 220, 0.55) 52%, transparent 65%);
+    background-size: 300% 100%;
+    background-position: 120% 0;
+    mix-blend-mode: screen;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .door-frame .piece, .door-leaf .piece { transform-box: fill-box; transform-origin: 50% 100%; }
+  .snow-cap { opacity: 0; }
 
-  /* Área de toque = a porta inteira */
   .door-hit {
     position: absolute;
     left: 50%;
@@ -269,25 +374,24 @@
     cursor: pointer;
   }
   .door-hit:disabled { cursor: default; }
-  .door-hit:focus-visible { outline: 2px solid rgba(255, 230, 170, 0.9); outline-offset: 8px; }
+  .door-hit:focus-visible { outline: 2px solid rgba(255, 210, 140, 0.9); outline-offset: 8px; }
   .door-prompt {
     position: absolute;
     left: 0;
     right: 0;
-    top: calc(50% + var(--door-h) / 2 + 22px);
+    top: calc(50% + var(--door-h) / 2 + 18px);
     z-index: 9;
     margin: 0;
     text-align: center;
     font-size: clamp(12px, 1.6vw, 15px);
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: rgba(255, 236, 196, 0.9);
-    text-shadow: 0 0 18px rgba(255, 210, 130, 0.6), 0 2px 10px rgba(0, 0, 0, 0.9);
+    color: rgba(255, 228, 184, 0.92);
+    text-shadow: 0 0 18px rgba(255, 180, 90, 0.6), 0 2px 10px rgba(0, 0, 0, 0.9);
     opacity: 0;
     pointer-events: none;
   }
 
-  /* Narrativa */
   .narrative {
     position: absolute;
     inset: 0;
@@ -323,12 +427,11 @@
     position: absolute;
     inset: 0;
     z-index: 20;
-    background: radial-gradient(circle at 50% 50%, #fffdf6 0%, #fff1d2 45%, #f7d79b 100%);
+    background: radial-gradient(circle at 50% 50%, #fffdf7 0%, #fff0d4 45%, #ffd9a0 100%);
     opacity: 0;
     pointer-events: none;
   }
 
-  /* Controles */
   .ui-controls {
     position: absolute;
     right: 24px;
@@ -355,7 +458,7 @@
     border-color: rgba(212, 176, 106, 0.6);
     box-shadow: 0 0 20px rgba(212, 176, 106, 0.3);
   }
-  .ui-btn:focus-visible { outline: 2px solid rgba(255, 230, 170, 0.9); outline-offset: 2px; }
+  .ui-btn:focus-visible { outline: 2px solid rgba(255, 210, 140, 0.9); outline-offset: 2px; }
   .ui-btn-sound { padding: 10px 12px; }
   .sound-icon { display: block; }
   .sound-waves { opacity: 0.3; transition: opacity 0.3s; }
@@ -374,7 +477,7 @@
   }
 
   @media (max-width: 768px) {
-    .welcome-experience { --door-h: min(58vh, 480px); }
+    .welcome-experience { --door-h: min(56vh, 470px); }
     .narrative { gap: 14px; }
     .narrative-line { font-size: clamp(14px, 4vw, 18px); }
     .narrative-line--emphasis { font-size: clamp(16px, 4.5vw, 22px); }
@@ -387,23 +490,29 @@
   import gsap from 'gsap';
   import { audioSystem } from '../../lib/audio-system';
 
-  const $ = <T extends Element = HTMLElement>(id: string) => document.getElementById(id) as unknown as T;
-  const doorBtn = $<HTMLButtonElement>('door-btn');
-  const skipBtn = $<HTMLButtonElement>('skip-btn');
-  const soundBtn = $<HTMLButtonElement>('sound-btn');
-  const srAnnounce = $('sr-announce');
-  const frameSvg = $<SVGSVGElement>('door-frame');
+  const byId = <T extends Element = HTMLElement>(id: string) => document.getElementById(id) as unknown as T;
+  const doorBtn = byId<HTMLButtonElement>('door-btn');
+  const skipBtn = byId<HTMLButtonElement>('skip-btn');
+  const soundBtn = byId<HTMLButtonElement>('sound-btn');
+  const srAnnounce = byId('sr-announce');
+  const frameSvg = byId<SVGSVGElement>('door-frame');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const announce = (message: string) => { if (srAnnounce) srAnnounce.textContent = message; };
   const redirectToSite = () => location.replace('/index/');
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
-  // ── Neve ──────────────────────────────────────────────────────
-  type Flake = { x: number; y: number; r: number; vy: number; vx: number; a: number };
-  const snowCanvas = $<HTMLCanvasElement>('snow-canvas');
+  // ── Canvas: neve de fundo + partículas da montagem ────────────
+  const snowCanvas = byId<HTMLCanvasElement>('snow-canvas');
+  const fxCanvas = byId<HTMLCanvasElement>('fx-canvas');
   const snowCtx = snowCanvas.getContext('2d');
+  const fxCtx = fxCanvas.getContext('2d');
+
+  type Flake = { x: number; y: number; r: number; vy: number; vx: number; a: number };
+  type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; ember: boolean };
   let flakes: Flake[] = [];
+  let bits: Bit[] = [];
 
   function sizeCanvas(canvas: HTMLCanvasElement) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -417,245 +526,208 @@
     flakes = Array.from({ length: count }, () => ({
       x: Math.random() * innerWidth,
       y: Math.random() * innerHeight,
-      r: Math.random() * 2 + 0.5,
-      vy: Math.random() * 0.6 + 0.25,
-      vx: Math.random() * 0.4 - 0.1,
-      a: Math.random() * 0.5 + 0.3,
+      r: rand(0.5, 2.5),
+      vy: rand(0.25, 0.85),
+      vx: rand(-0.1, 0.3),
+      a: rand(0.3, 0.8),
     }));
   }
 
-  // ── Fagulhas que formam a porta ───────────────────────────────
-  type Mote = {
-    x: number; y: number; sx: number; sy: number; tx: number; ty: number;
-    start: number; dur: number; size: number; done: boolean; orbit?: number;
-  };
-  const moteCanvas = $<HTMLCanvasElement>('mote-canvas');
-  const moteCtx = moteCanvas.getContext('2d');
-  let motes: Mote[] = [];
-  let ambient: Mote[] = [];
-
-  /** Pontos do contorno da porta (moldura), já em coordenadas de tela. */
-  function outlinePoints(count: number): { x: number; y: number }[] {
-    const paths = [...frameSvg.querySelectorAll<SVGPathElement>('path.draw')];
-    const ctm = frameSvg.getScreenCTM();
-    if (!ctm) return [];
-    const total = paths.reduce((sum, p) => sum + p.getTotalLength(), 0);
-    const points: { x: number; y: number }[] = [];
-    for (const path of paths) {
-      const len = path.getTotalLength();
-      const n = Math.max(4, Math.round((count * len) / total));
-      for (let i = 0; i < n; i++) {
-        const p = path.getPointAtLength((len * i) / (n - 1));
-        const pt = new DOMPoint(p.x, p.y).matrixTransform(ctm);
-        points.push({ x: pt.x, y: pt.y });
-      }
-    }
-    return points;
-  }
-
-  function launchMotes(now: number) {
-    const points = outlinePoints(innerWidth < 600 ? 110 : 170);
-    motes = points.map((target, i) => {
-      // Saem da tempestade: bordas da tela e pontos ao acaso.
-      const angle = Math.random() * Math.PI * 2;
-      const radius = Math.max(innerWidth, innerHeight) * (0.45 + Math.random() * 0.35);
-      const sx = innerWidth / 2 + Math.cos(angle) * radius;
-      const sy = innerHeight / 2 + Math.sin(angle) * radius;
-      return {
-        x: sx, y: sy, sx, sy, tx: target.x, ty: target.y,
-        start: now + (i % 40) * 22 + Math.random() * 500,
-        dur: 1500 + Math.random() * 900,
-        size: 1.2 + Math.random() * 1.8,
-        done: false,
-      };
-    });
-  }
-
-  function seedAmbient() {
-    ambient = Array.from({ length: innerWidth < 600 ? 18 : 30 }, () => ({
-      x: 0, y: 0, sx: 0, sy: 0, tx: 0, ty: 0,
-      start: Math.random() * 1000, dur: 4000 + Math.random() * 5000,
-      size: 0.8 + Math.random() * 1.6, done: false, orbit: Math.random() * Math.PI * 2,
-    }));
-  }
-  let ambientOn = false;
-
-  const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-  // Brilho pré-renderizado uma vez: desenhar uma imagem é bem mais barato que
-  // criar um gradiente por fagulha a cada quadro (importante no celular).
+  // Brilho pré-renderizado (desenhar imagem é bem mais barato que gradiente por partícula).
   const glowSprite = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
     const g = c.getContext('2d');
     if (g) {
       const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, 'rgba(255, 248, 225, 1)');
-      grad.addColorStop(0.35, 'rgba(255, 214, 140, 0.6)');
-      grad.addColorStop(1, 'rgba(255, 190, 100, 0)');
+      grad.addColorStop(0, 'rgba(255, 236, 200, 1)');
+      grad.addColorStop(0.35, 'rgba(255, 180, 90, 0.6)');
+      grad.addColorStop(1, 'rgba(255, 140, 60, 0)');
       g.fillStyle = grad;
       g.fillRect(0, 0, 64, 64);
     }
     return c;
   })();
 
-  function drawGlow(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number) {
-    const r = size * 4;
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-    ctx.drawImage(glowSprite, x - r, y - r, r * 2, r * 2);
-    ctx.globalAlpha = 1;
+  /** Ponto do desenho da porta (coordenadas do viewBox) em pixels de tela. */
+  function toScreen(x: number, y: number) {
+    const ctm = frameSvg.getScreenCTM();
+    if (!ctm) return { x: innerWidth / 2, y: innerHeight / 2 };
+    const p = new DOMPoint(x, y).matrixTransform(ctm);
+    return { x: p.x, y: p.y };
   }
 
-  function frame(now: number) {
+  /** Lufada de neve e fagulhas saindo do chão (quando a porta brota). */
+  function burst(count: number, x0: number, x1: number, y: number, power = 1) {
+    for (let i = 0; i < count; i++) {
+      const p = toScreen(rand(x0, x1), y);
+      const ember = Math.random() < 0.35;
+      bits.push({
+        x: p.x,
+        y: p.y,
+        vx: rand(-2.2, 2.2) * power,
+        vy: rand(-4.5, -1.2) * power,
+        life: 0,
+        max: rand(50, 95),
+        size: ember ? rand(1.2, 2.4) : rand(1.5, 3.5),
+        ember,
+      });
+    }
+  }
+
+  function frame() {
     if (snowCtx) {
       snowCtx.clearRect(0, 0, innerWidth, innerHeight);
+      snowCtx.fillStyle = '#fff';
       for (const f of flakes) {
         f.y += f.vy; f.x += f.vx;
         if (f.y > innerHeight) { f.y = -8; f.x = Math.random() * innerWidth; }
         if (f.x > innerWidth) f.x = 0; else if (f.x < 0) f.x = innerWidth;
         snowCtx.globalAlpha = f.a;
-        snowCtx.fillStyle = '#fff';
         snowCtx.beginPath();
         snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
         snowCtx.fill();
       }
       snowCtx.globalAlpha = 1;
     }
-
-    if (moteCtx) {
-      moteCtx.clearRect(0, 0, innerWidth, innerHeight);
-      moteCtx.globalCompositeOperation = 'lighter';
-      for (const m of motes) {
-        if (m.done || now < m.start) continue;
-        const t = Math.min(1, (now - m.start) / m.dur);
-        const e = easeInOut(t);
-        // Curva: vão em espiral suave até o alvo.
-        const swirl = Math.sin(t * Math.PI) * 60;
-        const dx = m.tx - m.sx, dy = m.ty - m.sy;
-        const len = Math.hypot(dx, dy) || 1;
-        m.x = m.sx + dx * e + (-dy / len) * swirl;
-        m.y = m.sy + dy * e + (dx / len) * swirl;
-        const alpha = t < 0.85 ? Math.min(1, t * 3) : (1 - t) / 0.15;
-        drawGlow(moteCtx, m.x, m.y, m.size, Math.max(0, alpha));
-        if (t >= 1) m.done = true;
-      }
-      if (ambientOn) {
-        const rect = frameSvg.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-        for (const a of ambient) {
-          const t = ((now + a.start) % a.dur) / a.dur;
-          const ang = (a.orbit ?? 0) + t * Math.PI * 0.6;
-          const rx = rect.width * (0.55 + 0.15 * Math.sin(a.dur)), ry = rect.height * 0.5;
-          const x = cx + Math.cos(ang) * rx * (0.7 + 0.3 * t);
-          const y = cy + Math.sin(ang) * ry - t * 40;
-          drawGlow(moteCtx, x, y, a.size, Math.sin(t * Math.PI) * 0.7);
+    if (fxCtx) {
+      fxCtx.clearRect(0, 0, innerWidth, innerHeight);
+      bits = bits.filter((b) => b.life < b.max);
+      for (const b of bits) {
+        b.life++;
+        b.x += b.vx;
+        b.y += b.vy;
+        b.vy += b.ember ? -0.01 : 0.06; // fagulha sobe, neve cai
+        b.vx *= 0.985;
+        const alpha = 1 - b.life / b.max;
+        if (b.ember) {
+          const r = b.size * 4;
+          fxCtx.globalCompositeOperation = 'lighter';
+          fxCtx.globalAlpha = alpha;
+          fxCtx.drawImage(glowSprite, b.x - r, b.y - r, r * 2, r * 2);
+          fxCtx.globalCompositeOperation = 'source-over';
+        } else {
+          fxCtx.globalAlpha = alpha * 0.8;
+          fxCtx.fillStyle = '#eef3fb';
+          fxCtx.beginPath();
+          fxCtx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+          fxCtx.fill();
         }
       }
-      moteCtx.globalCompositeOperation = 'source-over';
+      fxCtx.globalAlpha = 1;
     }
     requestAnimationFrame(frame);
   }
 
   function resize() {
     sizeCanvas(snowCanvas);
-    sizeCanvas(moteCanvas);
+    sizeCanvas(fxCanvas);
     seedSnow();
   }
 
-  // ── Linha do tempo da formação ────────────────────────────────
-  const drawPaths = [...frameSvg.querySelectorAll<SVGPathElement>('path.draw')];
-  for (const p of drawPaths) {
-    const len = p.getTotalLength();
-    p.style.strokeDasharray = `${len}`;
-    p.style.strokeDashoffset = `${len}`;
+  // ── Montagem: as peças brotam do chão e se encaixam ───────────
+  const q = (sel: string) => gsap.utils.toArray<SVGGraphicsElement>(sel);
+  const sills = q('.piece.sill');
+  const jambs = q('.piece.jamb').sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
+  const planks = q('.piece.plank');
+  const irons = q('.piece.iron');
+  const handles = q('.piece.handle');
+  const voussoirs = q('.piece.voussoir:not(.keystone)').sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
+  const keystone = q('.piece.keystone');
+
+  /** Estado "ainda no chão": abaixo, girada, pequena e invisível. */
+  function scatter(el: Element, depth = 1) {
+    gsap.set(el, {
+      transformOrigin: '50% 100%',
+      x: rand(-40, 40) * depth,
+      y: rand(70, 170) * depth,
+      rotation: rand(-70, 70),
+      scale: rand(0.25, 0.6),
+      opacity: 0,
+    });
   }
 
-  // Joias ao longo do arco interno.
-  const gemsGroup = frameSvg.querySelector('#arch-gems')!;
-  const innerArch = $<SVGPathElement>('inner-arch');
-  const archLen = innerArch.getTotalLength();
-  const gems: SVGElement[] = [];
-  for (let i = 1; i <= 9; i++) {
-    const p = innerArch.getPointAtLength(archLen * (0.18 + (0.64 * i) / 10));
-    const gem = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    gem.setAttribute('d', `M${p.x} ${p.y - 5} L${p.x + 4} ${p.y} L${p.x} ${p.y + 5} L${p.x - 4} ${p.y} Z`);
-    gem.style.opacity = '0';
-    gemsGroup.appendChild(gem);
-    gems.push(gem);
-  }
+  const snap = { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1, ease: 'back.out(1.7)' };
 
-  function buildFormation(): gsap.core.Timeline {
+  function buildAssembly(): gsap.core.Timeline {
+    [...sills, ...jambs, ...voussoirs, ...keystone].forEach((el) => scatter(el));
+    planks.forEach((el) => scatter(el, 1.4));
+    [...irons, ...handles].forEach((el) => scatter(el, 0.7));
+
     const tl = gsap.timeline({ paused: true });
-    tl.to('#door-spark', { opacity: 1, scale: 1, duration: 0.9, ease: 'power2.out' }, 0)
-      .to('#door-spark', { scale: 1.6, duration: 0.6, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0.9)
-      .to('#narrative-text', { opacity: 0, y: -20, duration: 1, ease: 'power2.in' }, 1.6)
-      .add(() => launchMotes(performance.now()), 2.2)
-      .to('#door-spark', { top: '50%', scale: 0.6, duration: 1.2, ease: 'power2.inOut' }, 2.2)
-      .to('#door-seam', { opacity: 1, scaleY: 1, duration: 1.4, ease: 'power3.out' }, 3.0)
-      .to('#door-spark', { opacity: 0, duration: 0.6 }, 3.4)
-      .to('#door-halo', { opacity: 0.6, duration: 2.5, ease: 'sine.out' }, 3.0)
-      .to('#door-floor', { opacity: 1, duration: 3, ease: 'sine.out' }, 3.5)
-      .set('.door-frame .draw', { opacity: 1 }, 3.3)
-      .to('.door-frame .draw.outer', { strokeDashoffset: 0, duration: 2.3, ease: 'power2.inOut' }, 3.3)
-      .to('.door-frame .draw.base', { strokeDashoffset: 0, duration: 1.4, ease: 'power2.out' }, 3.5)
-      .to('.door-frame .draw.inner', { strokeDashoffset: 0, duration: 1.8, ease: 'power2.inOut' }, 4.6)
-      .fromTo('#keystone', { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(3)' }, 5.5)
-      .to(gems, { opacity: 1, duration: 0.25, stagger: 0.07 }, 5.7)
-      .to('.door-leaf', { opacity: 1, duration: 1.6, ease: 'power1.inOut' }, 6.2)
-      .to('#door-seam', { opacity: 0.55, duration: 1.2 }, 6.6)
-      .to('#door-halo', { opacity: 1, duration: 0.5, ease: 'power2.out' }, 7.2)
-      .to('#door-halo', { opacity: 0.75, duration: 1.2, ease: 'sine.inOut' }, 7.7)
-      .add(() => { ambientOn = true; }, 7.4)
-      .to('#door-prompt', { opacity: 1, duration: 1.2 }, 8.2);
+    tl.to('#narrative-text', { opacity: 0, y: -20, duration: 0.9, ease: 'power2.in' }, 0)
+      .to('#door-floor', { opacity: 0.7, duration: 1, ease: 'sine.out' }, 0.5)
+      .add(() => burst(innerWidth < 600 ? 50 : 80, 30, 270, 455), 1.25)
+      .to(sills, { ...snap, duration: 0.45, stagger: 0.05 }, 1.2)
+      .to(jambs, { ...snap, duration: 0.5, stagger: 0.07 }, 1.3)
+      .to(planks, { ...snap, duration: 0.6, stagger: { each: 0.05, from: 'edges' } }, 1.4)
+      .to(voussoirs, { ...snap, duration: 0.45, stagger: 0.06 }, 1.75)
+      .to([...irons, ...handles], { ...snap, duration: 0.4, stagger: 0.04 }, 1.95)
+      // A chave do arco chega por último, com um tranco.
+      .to(keystone, { ...snap, duration: 0.5, ease: 'back.out(3)' }, 2.25)
+      .add(() => burst(18, 135, 165, 95, 0.6), 2.5)
+      .fromTo('#door-float', { y: 0 }, { y: 3, duration: 0.07, yoyo: true, repeat: 3, ease: 'none' }, 2.55)
+      .to('#door-glint', { opacity: 1, duration: 0.1 }, 2.7)
+      .to('#door-glint', { backgroundPosition: '-20% 0', duration: 0.9, ease: 'power2.inOut' }, 2.7)
+      .to('#door-glint', { opacity: 0, duration: 0.3 }, 3.4)
+      .to('.snow-cap', { opacity: 1, duration: 1.4, ease: 'sine.out' }, 2.9)
+      .to('#door-halo', { opacity: 1, duration: 1.5, ease: 'sine.out' }, 2.9)
+      .to(['#door-sill-light', '#door-seam'], { opacity: 1, duration: 1.2, ease: 'sine.out' }, 3.1)
+      .to('#door-prompt', { opacity: 1, duration: 1.2 }, 3.8);
     return tl;
   }
 
+  /** Luz de lareira escapando pelas frestas, tremulando. */
   function idle() {
-    gsap.to('#door-float', { y: -6, duration: 3, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-    gsap.to('#door-halo', { opacity: 0.95, duration: 2.4, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+    gsap.to(['#door-sill-light', '#door-seam'], {
+      opacity: () => rand(0.55, 1),
+      duration: () => rand(0.12, 0.35),
+      repeat: -1,
+      repeatRefresh: true,
+      ease: 'sine.inOut',
+    });
     gsap.to('#door-prompt', { opacity: 0.45, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1 });
   }
 
   function openDoor(): Promise<void> {
     return new Promise((resolve) => {
-      gsap.killTweensOf(['#door-float', '#door-halo', '#door-prompt']);
+      gsap.killTweensOf(['#door-sill-light', '#door-seam', '#door-prompt']);
       const tl = gsap.timeline({ onComplete: resolve });
-      const medals = document.querySelectorAll('.door-leaf use');
-      tl.to('#door-prompt', { opacity: 0, duration: 0.4 }, 0)
-        .to('#door-seam', { opacity: 1, scaleX: 3, duration: 0.5, ease: 'power2.out' }, 0)
-        .to(medals, { filter: 'brightness(1.25)', duration: 0.4 }, 0)
-        .to('#door-inner-light', { opacity: 1, duration: 0.6 }, 0.35)
-        .to('#leaf-left', { rotationY: -108, duration: 2.2, ease: 'power2.inOut' }, 0.45)
-        .to('#leaf-right', { rotationY: 108, duration: 2.2, ease: 'power2.inOut' }, 0.45)
-        .to('#door-seam', { opacity: 0, duration: 0.6 }, 0.9)
-        .to('#door-halo', { opacity: 1, scale: 1.6, duration: 2, ease: 'power2.in' }, 0.8)
-        .to('#door-float', { scale: 3.2, duration: 2.6, ease: 'power3.in' }, 1.2)
-        .to(['#door-frame', '#snow-canvas'], { opacity: 0, duration: 1.4 }, 2.2)
-        .to('#flash', { opacity: 1, duration: 0.9, ease: 'power2.in' }, 2.7);
+      tl.to('#door-prompt', { opacity: 0, duration: 0.3 }, 0)
+        .to('.ring', { attr: { stroke: '#e9b45f' }, duration: 0.25 }, 0)
+        .to('#door-inner-light', { opacity: 1, duration: 0.35 }, 0.1)
+        // Entreabre, como na referência: a luz é que invade.
+        .to('#leaf-left', { rotationY: 26, duration: 0.9, ease: 'power2.out' }, 0.15)
+        .to('#leaf-right', { rotationY: -26, duration: 0.9, ease: 'power2.out' }, 0.15)
+        .to('#door-seam', { opacity: 1, width: '18%', marginLeft: '-9%', duration: 0.6, ease: 'power2.in' }, 0.15)
+        .to('#door-halo', { opacity: 1, scale: 1.8, duration: 0.9, ease: 'power2.in' }, 0.2)
+        .add(() => burst(30, 120, 180, 300, 0.8), 0.3)
+        .to('#door-float', { scale: 1.35, duration: 1.2, ease: 'power2.in' }, 0.3)
+        .to('#flash', { opacity: 1, duration: 0.55, ease: 'power2.in' }, 0.6)
+        .to({}, { duration: 0.35 });
     });
   }
 
   // ── Execução ──────────────────────────────────────────────────
   async function runExperience() {
     resize();
-    seedAmbient();
     requestAnimationFrame(frame);
-    announce('Tempestade de neve. Uma luz surge e forma uma porta.');
+    announce('Tempestade de neve. Uma porta de taverna surge à sua frente.');
     audioSystem.init();
     audioSystem.transitionTo('tavern');
 
-    const formation = buildFormation();
+    const assembly = buildAssembly();
     let opened = false;
 
     const open = async () => {
       if (opened) return;
       opened = true;
       doorBtn.disabled = true;
-      // Tocou antes de terminar de formar: completa na hora e abre.
-      if (formation.progress() < 1) formation.progress(1);
+      // Tocou antes de terminar a montagem: completa na hora e abre.
+      if (assembly.progress() < 1) assembly.progress(1);
       if (!audioSystem.ready) audioSystem.init();
       audioSystem.setMuted(false, 600);
-      audioSystem.transitionTo('door-open', 400);
+      audioSystem.transitionTo('door-open', 300);
       soundBtn?.setAttribute('aria-pressed', 'true');
       announce('Abrindo a porta...');
       if (reducedMotion) {
@@ -664,7 +736,6 @@
       }
       await openDoor();
       audioSystem.transitionTo('tavern', 600);
-      await wait(250);
       redirectToSite();
     };
 
@@ -677,21 +748,20 @@
     });
 
     if (reducedMotion) {
-      formation.progress(1);
-      ambientOn = false;
+      assembly.progress(1);
       doorBtn.disabled = false;
-      announce('Uma porta está à sua frente. Toque para entrar.');
+      announce('Uma porta de taverna está à sua frente. Toque para entrar.');
       return;
     }
 
-    // As frases levam ~7 s; a luz surge junto com "Uma luz surge à sua frente".
-    await wait(6800);
-    doorBtn.disabled = false; // já dá para tocar (completa a formação)
-    formation.play();
-    formation.eventCallback('onComplete', () => {
-      announce('Uma porta de luz está à sua frente. Toque para entrar.');
+    // As frases levam ~7 s; a porta brota logo depois de "Uma luz surge à sua frente".
+    await wait(7600);
+    doorBtn.disabled = false;
+    assembly.eventCallback('onComplete', () => {
+      announce('Uma porta de taverna está à sua frente. Toque para entrar.');
       idle();
     });
+    assembly.play();
   }
 
   skipBtn?.addEventListener('click', () => {
