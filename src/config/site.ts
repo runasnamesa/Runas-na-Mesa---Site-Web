@@ -5,6 +5,8 @@
 export const SITE = {
   name: 'Runas na Mesa',
   url: 'https://runasnamesa.com.br',
+  /** A mesa virtual do grupo (outro projeto, mesmo domínio). */
+  mesaUrl: 'https://mesa.runasnamesa.com.br',
   tagline: 'Sua taverna para histórias épicas.',
   description:
     'Um refúgio acolhedor para jogadores e mestres de RPG. Descanse, aprenda e prepare-se para a próxima aventura.',

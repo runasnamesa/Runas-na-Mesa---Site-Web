@@ -1,9 +1,11 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+/**
+ * A Taverna agora é a mesa virtual do grupo: quem chegar por um link antigo
+ * para /taverna vai direto para lá.
+ */
+import { SITE } from '../config/site';
+
+export const prerender = false;
+
+return Astro.redirect(SITE.mesaUrl, 302);
 ---
-
-<BaseLayout title="Taverna — Runas na Mesa" description="A casa da comunidade Runas na Mesa.">
-  <section class="page container"><p>A taverna</p><h1>Um lugar para descansar entre aventuras</h1><p>Encontre histórias, ideias para campanhas e uma comunidade apaixonada por RPG.</p><a href="/comunidade">Conhecer a comunidade →</a></section>
-</BaseLayout>
-
-<style>.page { max-width: 52rem; padding-block: var(--space-24); } .page > p:first-child, a { color: var(--color-starlight-gold); } h1 { color: var(--color-ivory); font-family: var(--font-heading); font-size: var(--text-4xl); margin: var(--space-4) 0; } .page > p { color: var(--color-ivory-muted); font-size: var(--text-lg); line-height: 1.7; margin-bottom: var(--space-8); }</style>
