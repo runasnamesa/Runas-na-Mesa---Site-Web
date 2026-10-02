@@ -1,80 +1,133 @@
 ---
 /**
- * Welcome Experience V3 — Genshin Impact Inspired
- * Completamente reconstruído do zero
+ * Abertura da Taverna — inspirada na tela de entrada de Genshin Impact.
+ *
+ * Roteiro: a nevasca e as frases; uma luz surge; fagulhas douradas saem da
+ * tempestade e voam até o contorno de uma porta, que é desenhada em luz,
+ * ganha detalhes e se materializa. Ao tocar, o medalhão gira, as folhas se
+ * abrem em 3D, a luz invade a tela e a câmera atravessa — e a taverna
+ * (/index/) aparece.
+ *
+ * Tudo em SVG + GSAP + canvas 2D (sem WebGL): leve e fluido no celular.
  */
 ---
 
 <div id="welcome-experience" class="welcome-experience">
-  <!-- Background Layer -->
   <div class="bg-layer">
     <div class="bg-mountains"></div>
     <div class="bg-overlay"></div>
   </div>
 
-  <!-- Snow Particles -->
-  <canvas id="snow-canvas" class="snow-canvas"></canvas>
+  <canvas id="snow-canvas" class="fx-canvas fx-canvas--snow"></canvas>
 
-  <!-- Main Door Scene -->
-  <div class="door-scene" id="door-scene">
-    <div class="narrative-container">
-      <!-- Narrative Text -->
-      <div class="narrative-text" id="narrative-text">
-        <p class="narrative-line" style="animation-delay: 0s;">
-          O vento uiva ao seu redor.
-        </p>
-        <p class="narrative-line" style="animation-delay: 1.5s;">
-          A neve cega seus olhos.
-        </p>
-        <p class="narrative-line" style="animation-delay: 3s;">
-          O frio penetra até os ossos.
-        </p>
-        <p class="narrative-line narrative-line--emphasis" style="animation-delay: 5s;">
-          Então, na escuridão da tempestade...
-        </p>
-        <p class="narrative-line narrative-line--emphasis" style="animation-delay: 6.5s;">
-          Uma luz surge à sua frente.
-        </p>
-        <p class="narrative-line narrative-line--emphasis" style="animation-delay: 8s;">
-          Uma porta.
-        </p>
+  <!-- Porta: halo, luz interna, folhas (3D) e moldura desenhada em luz. -->
+  <div class="door-stage" id="door-stage" aria-hidden="true">
+    <div class="door-float" id="door-float">
+      <div class="door-halo" id="door-halo"></div>
+      <div class="door-floor" id="door-floor"></div>
+      <div class="door-inner-light" id="door-inner-light"></div>
+
+      <div class="door-leaf door-leaf--left" id="leaf-left">
+        <svg viewBox="0 0 300 480" class="door-svg">
+          <use href="#leaf-art" clip-path="url(#clip-left)" />
+        </svg>
+      </div>
+      <div class="door-leaf door-leaf--right" id="leaf-right">
+        <svg viewBox="0 0 300 480" class="door-svg">
+          <use href="#leaf-art" clip-path="url(#clip-right)" />
+        </svg>
       </div>
 
-      <!-- Door Button -->
-      <button class="door-button-simple" id="door-btn" aria-label="Abrir a porta e entrar">
-        <span class="door-button-text">ABRIR A PORTA</span>
-        <span class="door-button-glow"></span>
-      </button>
+      <div class="door-seam" id="door-seam"></div>
+
+      <svg viewBox="0 0 300 480" class="door-svg door-frame" id="door-frame">
+        <defs>
+          <linearGradient id="gold-stroke" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="470">
+            <stop offset="0" stop-color="#fff4d6" />
+            <stop offset="0.5" stop-color="#f0c97a" />
+            <stop offset="1" stop-color="#c8963e" />
+          </linearGradient>
+          <linearGradient id="leaf-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fbf4e4" />
+            <stop offset="0.6" stop-color="#eadcbc" />
+            <stop offset="1" stop-color="#cdb98f" />
+          </linearGradient>
+          <radialGradient id="medal-fill" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fffaf0" />
+            <stop offset="1" stop-color="#e6cf98" />
+          </radialGradient>
+          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <clipPath id="clip-left"><path d="M46 470 L46 172 A104 104 0 0 1 150 68 L150 470 Z" /></clipPath>
+          <clipPath id="clip-right"><path d="M254 470 L254 172 A104 104 0 0 0 150 68 L150 470 Z" /></clipPath>
+
+          <!-- Arte das folhas (a mesma nas duas; o recorte separa esquerda/direita). -->
+          <g id="leaf-art">
+            <path d="M46 470 L46 172 A104 104 0 0 1 254 172 L254 470 Z" fill="url(#leaf-fill)" />
+            <g fill="none" stroke="#b8862f" stroke-width="2" opacity="0.9">
+              <path d="M62 455 L62 180 A88 88 0 0 1 238 180 L238 455 Z" />
+              <rect x="76" y="352" width="58" height="90" rx="6" />
+              <rect x="166" y="352" width="58" height="90" rx="6" />
+              <path d="M150 90 L150 470" stroke-width="1.5" />
+              <path d="M88 200 Q150 120 212 200" />
+              <path d="M98 214 Q150 150 202 214" opacity="0.6" />
+            </g>
+            <g transform="translate(150 280)">
+              <circle r="52" fill="url(#medal-fill)" stroke="#b8862f" stroke-width="3" />
+              <circle r="40" fill="none" stroke="#c8963e" stroke-width="1.5" stroke-dasharray="4 6" />
+              <path d="M0 -34 L10 -10 L34 0 L10 10 L0 34 L-10 10 L-34 0 L-10 -10 Z" fill="#d9b158" />
+              <circle r="7" fill="#fff4d6" stroke="#b8862f" stroke-width="2" />
+            </g>
+          </g>
+        </defs>
+
+        <!-- Moldura em luz: duas metades sobem do chão e se encontram no fecho. -->
+        <g fill="none" stroke="url(#gold-stroke)" stroke-linecap="round" filter="url(#glow)">
+          <path class="draw outer" d="M30 470 L30 170 A120 120 0 0 1 150 50" stroke-width="7" />
+          <path class="draw outer" d="M270 470 L270 170 A120 120 0 0 0 150 50" stroke-width="7" />
+          <path class="draw inner" id="inner-arch" d="M46 470 L46 172 A104 104 0 0 1 254 172 L254 470" stroke-width="3" />
+          <path class="draw base" d="M8 470 L292 470" stroke-width="5" />
+        </g>
+        <g id="arch-gems" fill="#fff4d6" filter="url(#glow)"></g>
+        <path id="keystone" d="M150 30 L166 50 L150 70 L134 50 Z" fill="#fff4d6" stroke="#d9b158" stroke-width="2" filter="url(#glow)" />
+      </svg>
+
+      <div class="door-spark" id="door-spark"></div>
     </div>
   </div>
 
-  <!-- Light Transition Overlay -->
-  <div class="light-transition" id="light-transition">
-    <div class="light-burst" id="light-burst"></div>
+  <canvas id="mote-canvas" class="fx-canvas fx-canvas--motes"></canvas>
+
+  <div class="narrative" id="narrative-text">
+    <p class="narrative-line" style="animation-delay: 0.5s;">O vento uiva ao seu redor.</p>
+    <p class="narrative-line" style="animation-delay: 2s;">A neve cega seus olhos.</p>
+    <p class="narrative-line" style="animation-delay: 3.5s;">O frio penetra até os ossos.</p>
+    <p class="narrative-line narrative-line--emphasis" style="animation-delay: 5s;">Então, na escuridão da tempestade...</p>
+    <p class="narrative-line narrative-line--emphasis" style="animation-delay: 6.5s;">Uma luz surge à sua frente.</p>
   </div>
 
-  <!-- UI Controls -->
+  <!-- Toda a porta é o botão (área de toque grande no celular). -->
+  <button class="door-hit" id="door-btn" type="button" aria-label="Abrir a porta e entrar na taverna" disabled></button>
+  <p class="door-prompt" id="door-prompt" aria-hidden="true">Toque na porta para entrar</p>
+
+  <div class="flash" id="flash"></div>
+
   <div class="ui-controls">
-    <button class="ui-btn ui-btn-skip" id="skip-btn">
-      <span>PULAR</span>
-    </button>
-    <button class="ui-btn ui-btn-sound" id="sound-btn" aria-pressed="false">
-      <svg class="sound-icon" width="20" height="20" viewBox="0 0 20 20">
-        <path d="M10 4L6 8H3v4h3l4 4V4z" fill="currentColor"/>
-        <path class="sound-waves" d="M13 7c1 1 1 5 0 6M15 5c2 2 2 8 0 10" stroke="currentColor" fill="none"/>
+    <button class="ui-btn" id="skip-btn" type="button">Pular</button>
+    <button class="ui-btn ui-btn-sound" id="sound-btn" type="button" aria-pressed="false" aria-label="Ativar som">
+      <svg class="sound-icon" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M10 4L6 8H3v4h3l4 4V4z" fill="currentColor" />
+        <path class="sound-waves" d="M13 7c1 1 1 5 0 6M15 5c2 2 2 8 0 10" stroke="currentColor" fill="none" />
       </svg>
     </button>
   </div>
 
-  <!-- Screen Reader -->
   <div class="sr-only" id="sr-announce" aria-live="polite" aria-atomic="true"></div>
 </div>
 
-
 <style>
-  /* ═══════════════════════════════════════════════════════════
-     RESET & BASE
-     ═══════════════════════════════════════════════════════════ */
   :global(html), :global(body) {
     margin: 0;
     padding: 0;
@@ -91,433 +144,191 @@
     overflow: hidden;
     font-family: 'Cinzel', serif;
     z-index: 9999;
+    --door-h: min(64vh, 560px);
+    --door-w: calc(var(--door-h) * 0.625);
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     BACKGROUND - Snowy Mountain
-     ═══════════════════════════════════════════════════════════ */
-  .bg-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-  }
-
+  /* Fundo: montanha nevada */
+  .bg-layer { position: absolute; inset: 0; z-index: 1; }
   .bg-mountains {
     position: absolute;
-    inset: 0;
-    background: 
-      linear-gradient(180deg, 
-        rgba(10, 14, 21, 0.3) 0%, 
-        rgba(10, 14, 21, 0.7) 50%,
-        rgba(10, 14, 21, 0.95) 100%
-      ),
+    inset: -20px;
+    background:
+      linear-gradient(180deg, rgba(10, 14, 21, 0.3) 0%, rgba(10, 14, 21, 0.7) 50%, rgba(10, 14, 21, 0.95) 100%),
       url('https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=1920&q=80') center/cover;
     filter: blur(2px) brightness(0.4) contrast(1.1);
   }
-
   .bg-overlay {
     position: absolute;
     inset: 0;
-    background: radial-gradient(
-      ellipse at 50% 40%,
-      transparent 0%,
-      rgba(0, 0, 0, 0.4) 60%,
-      rgba(0, 0, 0, 0.8) 100%
-    );
+    background: radial-gradient(ellipse at 50% 45%, transparent 0%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.85) 100%);
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     SNOW PARTICLES CANVAS
-     ═══════════════════════════════════════════════════════════ */
-  .snow-canvas {
+  .fx-canvas { position: absolute; inset: 0; pointer-events: none; }
+  .fx-canvas--snow { z-index: 2; }
+  .fx-canvas--motes { z-index: 7; }
+
+  /* Porta */
+  .door-stage {
     position: absolute;
     inset: 0;
-    z-index: 2;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    perspective: 1400px;
+    pointer-events: none;
+  }
+  .door-float {
+    position: relative;
+    width: var(--door-w);
+    height: var(--door-h);
+    transform-style: preserve-3d;
+  }
+  .door-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .door-halo {
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 260%;
+    height: 170%;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse at center, rgba(255, 226, 160, 0.35) 0%, rgba(240, 190, 110, 0.12) 35%, transparent 65%);
+    opacity: 0;
+  }
+  .door-floor {
+    position: absolute;
+    left: 50%;
+    bottom: -6%;
+    width: 190%;
+    height: 22%;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(255, 222, 160, 0.45) 0%, rgba(240, 190, 110, 0.15) 40%, transparent 70%);
+    opacity: 0;
+  }
+  .door-inner-light {
+    position: absolute;
+    left: 15.3%;
+    right: 15.3%;
+    top: 14%;
+    bottom: 2%;
+    border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+    background: radial-gradient(ellipse at 50% 55%, #fffdf5 0%, #ffe7b0 35%, #f2b866 70%, #c67b2c 100%);
+    box-shadow: 0 0 80px 20px rgba(255, 220, 150, 0.5);
+    opacity: 0;
+  }
+  .door-leaf {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+  /* Dobradiças nas laterais internas do arco (x = 46 e 254 de 300). */
+  .door-leaf--left { transform-origin: 15.33% 50%; }
+  .door-leaf--right { transform-origin: 84.67% 50%; }
+  .door-seam {
+    position: absolute;
+    left: 50%;
+    top: 14%;
+    bottom: 2%;
+    width: 3px;
+    margin-left: -1.5px;
+    background: linear-gradient(180deg, transparent, #fff8e6 15%, #fff8e6 85%, transparent);
+    box-shadow: 0 0 18px 4px rgba(255, 225, 160, 0.9);
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  .door-frame .draw { opacity: 0; }
+  #keystone { opacity: 0; transform-box: fill-box; transform-origin: center; }
+  .door-spark {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    background: #fffaf0;
+    box-shadow: 0 0 20px 8px rgba(255, 230, 170, 0.9), 0 0 60px 24px rgba(240, 190, 110, 0.5);
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  /* Área de toque = a porta inteira */
+  .door-hit {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--door-w);
+    height: var(--door-h);
+    transform: translate(-50%, -50%);
+    z-index: 9;
+    background: transparent;
+    border: 0;
+    border-radius: 45% 45% 4px 4px / 28% 28% 4px 4px;
+    cursor: pointer;
+  }
+  .door-hit:disabled { cursor: default; }
+  .door-hit:focus-visible { outline: 2px solid rgba(255, 230, 170, 0.9); outline-offset: 8px; }
+  .door-prompt {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(50% + var(--door-h) / 2 + 22px);
+    z-index: 9;
+    margin: 0;
+    text-align: center;
+    font-size: clamp(12px, 1.6vw, 15px);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255, 236, 196, 0.9);
+    text-shadow: 0 0 18px rgba(255, 210, 130, 0.6), 0 2px 10px rgba(0, 0, 0, 0.9);
+    opacity: 0;
     pointer-events: none;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     DOOR SCENE - Narrative Experience
-     ═══════════════════════════════════════════════════════════ */
-  .door-scene {
+  /* Narrativa */
+  .narrative {
     position: absolute;
     inset: 0;
-    z-index: 10;
+    z-index: 8;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    animation: fadeInScene 2s ease-out 0.5s forwards;
-  }
-
-  @keyframes fadeInScene {
-    to { opacity: 1; }
-  }
-
-  .narrative-container {
-    max-width: 600px;
-    width: 90%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 60px;
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     Narrative Text
-     ─────────────────────────────────────────────────────────── */
-  .narrative-text {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    gap: 18px;
+    padding: 0 8vw;
     text-align: center;
+    pointer-events: none;
   }
-
   .narrative-line {
+    margin: 0;
     font-size: clamp(16px, 2.5vw, 22px);
-    line-height: 1.8;
-    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.88);
     text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9);
     opacity: 0;
     transform: translateY(10px);
     animation: lineAppear 1s ease-out forwards;
-    margin: 0;
   }
-
   .narrative-line--emphasis {
     font-size: clamp(18px, 3vw, 26px);
-    color: rgba(212, 176, 106, 0.95);
     font-weight: 600;
-    text-shadow: 
-      0 2px 20px rgba(0, 0, 0, 0.9),
-      0 0 30px rgba(212, 176, 106, 0.3);
+    color: rgba(232, 196, 120, 0.97);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9), 0 0 30px rgba(212, 176, 106, 0.35);
   }
+  @keyframes lineAppear { to { opacity: 1; transform: translateY(0); } }
 
-  @keyframes lineAppear {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     Simple Door Button
-     ─────────────────────────────────────────────────────────── */
-  .door-button-simple {
-    position: relative;
-    background: rgba(10, 14, 21, 0.7);
-    backdrop-filter: blur(15px);
-    border: 2px solid rgba(212, 176, 106, 0.5);
-    color: rgba(212, 176, 106, 0.95);
-    padding: 20px 50px;
-    border-radius: 8px;
-    font: 600 18px 'Cinzel', serif;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    opacity: 0;
-    transform: translateY(20px);
-    animation: buttonAppear 1s ease-out 9s forwards;
-    box-shadow: 
-      0 10px 40px rgba(0, 0, 0, 0.6),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  }
-
-  @keyframes buttonAppear {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .door-button-simple:hover {
-    background: rgba(212, 176, 106, 0.15);
-    border-color: rgba(212, 176, 106, 0.8);
-    transform: translateY(-3px);
-    box-shadow: 
-      0 15px 50px rgba(0, 0, 0, 0.7),
-      0 0 40px rgba(212, 176, 106, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-
-  .door-button-simple:active {
-    transform: translateY(-1px);
-  }
-
-  .door-button-simple:focus {
-    outline: 2px solid rgba(212, 176, 106, 0.6);
-    outline-offset: 4px;
-  }
-
-  .door-button-text {
-    position: relative;
-    z-index: 2;
-  }
-
-  .door-button-glow {
-    position: absolute;
-    inset: -2px;
-    background: linear-gradient(
-      45deg,
-      transparent,
-      rgba(212, 176, 106, 0.1),
-      transparent
-    );
-    border-radius: 8px;
-    opacity: 0;
-    transition: opacity 0.4s;
-    pointer-events: none;
-  }
-
-  .door-button-simple:hover .door-button-glow {
-    opacity: 1;
-    animation: glowSweep 2s ease-in-out infinite;
-  }
-
-  @keyframes glowSweep {
-    0% {
-      background-position: -200% center;
-    }
-    100% {
-      background-position: 200% center;
-    }
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     TAVERN SCENE
-     ═══════════════════════════════════════════════════════════ */
-  .tavern-scene {
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 2s ease;
-  }
-
-  .tavern-scene.visible {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .tavern-bg {
-    position: absolute;
-    inset: 0;
-    background: 
-      radial-gradient(ellipse at 50% 40%, 
-        #4d2812 0%, 
-        #2a1508 40%, 
-        #1a0d05 70%, 
-        #0d0604 100%
-      );
-  }
-
-  /* Fireplace */
-  .fireplace {
-    position: absolute;
-    left: 50%;
-    top: 35%;
-    transform: translateX(-50%);
-    width: min(280px, 35vw);
-    height: min(320px, 40vh);
-    background: 
-      radial-gradient(ellipse at 50% 95%, 
-        #fff5b0 0%, 
-        #ff9020 8%, 
-        #992a0a 22%, 
-        #0d0604 45%
-      );
-    border: 18px solid #2a1f1a;
-    border-bottom-width: 12px;
-    border-radius: 50% 50% 0 0 / 60% 60% 0 0;
-    box-shadow: 
-      0 0 60px rgba(255, 120, 40, 0.4),
-      inset 0 0 40px rgba(0, 0, 0, 0.8);
-  }
-
-  .fire-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-  }
-
-  .fire-flame {
-    position: absolute;
-    bottom: 10%;
-    width: 18%;
-    border-radius: 50%;
-    background: linear-gradient(0deg, #ffeb80 0%, #ff7420 60%, transparent 100%);
-    filter: blur(2px);
-    animation: flameFlicker 1.5s ease-in-out infinite alternate;
-  }
-
-  .fire-flame-1 {
-    left: 42%;
-    height: 50%;
-    animation-duration: 1.3s;
-  }
-
-  .fire-flame-2 {
-    left: 28%;
-    height: 35%;
-    animation-duration: 1.7s;
-    animation-delay: -0.5s;
-  }
-
-  .fire-flame-3 {
-    left: 58%;
-    height: 42%;
-    animation-duration: 1.5s;
-    animation-delay: -1s;
-  }
-
-  @keyframes flameFlicker {
-    0% { transform: scaleX(0.9) scaleY(1) rotate(-2deg); }
-    100% { transform: scaleX(1.1) scaleY(1.08) rotate(3deg); }
-  }
-
-  .fire-glow-effect {
-    position: absolute;
-    inset: -50%;
-    background: radial-gradient(
-      ellipse,
-      rgba(255, 140, 60, 0.2) 0%,
-      transparent 60%
-    );
-    filter: blur(40px);
-    animation: fireGlow 2s ease-in-out infinite alternate;
-  }
-
-  @keyframes fireGlow {
-    0% { opacity: 0.5; }
-    100% { opacity: 1; }
-  }
-
-  /* Windows */
-  .window {
-    position: absolute;
-    top: 12%;
-    width: 140px;
-    height: 180px;
-    background: linear-gradient(180deg, #1c2838 0%, #0e1522 100%);
-    border: 8px solid #2a1f1a;
-    border-radius: 20px 20px 0 0;
-    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
-  }
-
-  .window-left { left: 8%; }
-  .window-right { right: 8%; }
-
-  .moon {
-    position: absolute;
-    top: 20%;
-    right: 25%;
-    width: 55px;
-    height: 55px;
-    background: radial-gradient(circle at 35% 30%, #f0f4f8 0%, #c8d0d8 60%, #a0b0c0 100%);
-    border-radius: 50%;
-    box-shadow: 0 0 20px rgba(240, 244, 248, 0.4);
-  }
-
-  /* Furniture */
-  .table {
-    position: absolute;
-    left: 50%;
-    bottom: 0;
-    transform: translateX(-50%) perspective(600px) rotateX(60deg);
-    width: min(800px, 80vw);
-    height: 35%;
-    background: repeating-linear-gradient(
-      90deg,
-      #2a1508 0,
-      #2a1508 15%,
-      #1a0d05 15%,
-      #1a0d05 17%,
-      #3a1e0a 17%,
-      #3a1e0a 30%
-    );
-    border: 8px solid #1a0d05;
-    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6);
-  }
-
-  .shelf {
-    position: absolute;
-    top: 22%;
-    width: 160px;
-    height: 200px;
-    background: 
-      linear-gradient(180deg, #1a0d05 0 10%, transparent 10% 90%, #1a0d05 90%),
-      repeating-linear-gradient(90deg, #3a1e0a 0 12%, #1a0d05 12% 14%);
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
-  }
-
-  .shelf-left { left: 5%; }
-  .shelf-right { right: 5%; }
-
-  /* Dust Particles */
-  .dust-canvas {
-    position: absolute;
-    inset: 0;
-    opacity: 0.12;
-    pointer-events: none;
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     LIGHT TRANSITION OVERLAY
-     ═══════════════════════════════════════════════════════════ */
-  .light-transition {
+  .flash {
     position: absolute;
     inset: 0;
     z-index: 20;
+    background: radial-gradient(circle at 50% 50%, #fffdf6 0%, #fff1d2 45%, #f7d79b 100%);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.5s ease;
   }
 
-  .light-transition.active {
-    opacity: 1;
-  }
-
-  .light-burst {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 100vmax;
-    height: 100vmax;
-    transform: translate(-50%, -50%) scale(0);
-    background: radial-gradient(
-      circle,
-      rgba(255, 240, 200, 1) 0%,
-      rgba(255, 200, 120, 0.9) 15%,
-      rgba(255, 160, 80, 0.6) 30%,
-      rgba(200, 100, 40, 0.3) 50%,
-      transparent 70%
-    );
-    filter: blur(20px);
-  }
-
-  .light-burst.expanding {
-    animation: burstExpand 2.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-  }
-
-  @keyframes burstExpand {
-    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-    20% { opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(3); opacity: 1; }
-  }
-
-  .light-burst.fading {
-    animation: burstFade 1.5s ease-out forwards;
-  }
-
-  @keyframes burstFade {
-    to { opacity: 0; }
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     UI CONTROLS
-     ═══════════════════════════════════════════════════════════ */
+  /* Controles */
   .ui-controls {
     position: absolute;
     right: 24px;
@@ -526,7 +337,6 @@
     display: flex;
     gap: 12px;
   }
-
   .ui-btn {
     background: rgba(10, 14, 21, 0.6);
     backdrop-filter: blur(10px);
@@ -536,36 +346,21 @@
     border-radius: 6px;
     font: 600 11px 'Cinzel', serif;
     letter-spacing: 1.5px;
-    cursor: pointer;
-    transition: all 0.3s ease;
     text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
   }
-
   .ui-btn:hover {
     background: rgba(10, 14, 21, 0.8);
     border-color: rgba(212, 176, 106, 0.6);
     box-shadow: 0 0 20px rgba(212, 176, 106, 0.3);
-    transform: translateY(-2px);
   }
+  .ui-btn:focus-visible { outline: 2px solid rgba(255, 230, 170, 0.9); outline-offset: 2px; }
+  .ui-btn-sound { padding: 10px 12px; }
+  .sound-icon { display: block; }
+  .sound-waves { opacity: 0.3; transition: opacity 0.3s; }
+  .ui-btn-sound[aria-pressed='true'] .sound-waves { opacity: 1; }
 
-  .ui-btn-sound {
-    padding: 10px 12px;
-  }
-
-  .sound-icon {
-    display: block;
-  }
-
-  .sound-waves {
-    opacity: 0.3;
-    transition: opacity 0.3s;
-  }
-
-  .ui-btn-sound[aria-pressed="true"] .sound-waves {
-    opacity: 1;
-  }
-
-  /* Screen Reader */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -578,231 +373,333 @@
     border: 0;
   }
 
-  /* Responsive */
   @media (max-width: 768px) {
-    .narrative-container {
-      width: 85%;
-      gap: 40px;
-    }
-
-    .narrative-line {
-      font-size: clamp(14px, 4vw, 18px);
-    }
-
-    .narrative-line--emphasis {
-      font-size: clamp(16px, 4.5vw, 22px);
-    }
-
-    .door-button-simple {
-      padding: 16px 40px;
-      font-size: 15px;
-      letter-spacing: 2px;
-    }
-
-    .ui-controls {
-      right: 16px;
-      bottom: 16px;
-      gap: 8px;
-    }
-
-    .ui-btn {
-      padding: 8px 14px;
-      font-size: 10px;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
+    .welcome-experience { --door-h: min(58vh, 480px); }
+    .narrative { gap: 14px; }
+    .narrative-line { font-size: clamp(14px, 4vw, 18px); }
+    .narrative-line--emphasis { font-size: clamp(16px, 4.5vw, 22px); }
+    .ui-controls { right: 16px; bottom: 16px; gap: 8px; }
+    .ui-btn { padding: 8px 14px; font-size: 10px; }
   }
 </style>
-
 
 <script>
   import gsap from 'gsap';
   import { audioSystem } from '../../lib/audio-system';
 
-  // DOM Elements
-  const doorBtn = document.getElementById('door-btn');
-  const lightTransition = document.getElementById('light-transition');
-  const lightBurst = document.getElementById('light-burst');
-  const skipBtn = document.getElementById('skip-btn');
-  const soundBtn = document.getElementById('sound-btn');
-  const srAnnounce = document.getElementById('sr-announce');
-
-  // Reduced motion check
+  const $ = <T extends Element = HTMLElement>(id: string) => document.getElementById(id) as unknown as T;
+  const doorBtn = $<HTMLButtonElement>('door-btn');
+  const skipBtn = $<HTMLButtonElement>('skip-btn');
+  const soundBtn = $<HTMLButtonElement>('sound-btn');
+  const srAnnounce = $('sr-announce');
+  const frameSvg = $<SVGSVGElement>('door-frame');
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Snow Particles System
-  class SnowSystem {
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D | null;
-    particles: Array<{x: number; y: number; radius: number; speedY: number; speedX: number; opacity: number}>;
-    width: number;
-    height: number;
+  const announce = (message: string) => { if (srAnnounce) srAnnounce.textContent = message; };
+  const redirectToSite = () => location.replace('/index/');
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    constructor(canvas: HTMLCanvasElement) {
-      this.canvas = canvas;
-      this.ctx = canvas.getContext('2d');
-      this.particles = [];
-      this.width = 0;
-      this.height = 0;
-      this.resize();
-      this.init();
-    }
+  // ── Neve ──────────────────────────────────────────────────────
+  type Flake = { x: number; y: number; r: number; vy: number; vx: number; a: number };
+  const snowCanvas = $<HTMLCanvasElement>('snow-canvas');
+  const snowCtx = snowCanvas.getContext('2d');
+  let flakes: Flake[] = [];
 
-    resize() {
-      this.width = window.innerWidth;
-      this.height = window.innerHeight;
-      this.canvas.width = this.width;
-      this.canvas.height = this.height;
-    }
-
-    init() {
-      const count = Math.min(150, Math.floor(this.width / 10));
-      for (let i = 0; i < count; i++) {
-        this.particles.push({
-          x: Math.random() * this.width,
-          y: Math.random() * this.height,
-          radius: Math.random() * 2 + 0.5,
-          speedY: Math.random() * 0.5 + 0.2,
-          speedX: Math.random() * 0.3 - 0.15,
-          opacity: Math.random() * 0.5 + 0.3
-        });
-      }
-    }
-
-    update() {
-      if (!this.ctx) return;
-      this.ctx.clearRect(0, 0, this.width, this.height);
-      
-      for (const p of this.particles) {
-        p.y += p.speedY;
-        p.x += p.speedX;
-
-        if (p.y > this.height) {
-          p.y = -10;
-          p.x = Math.random() * this.width;
-        }
-        if (p.x > this.width) p.x = 0;
-        if (p.x < 0) p.x = this.width;
-
-        this.ctx.beginPath();
-        this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        this.ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
-        this.ctx.fill();
-      }
-    }
-
-    animate() {
-      this.update();
-      requestAnimationFrame(() => this.animate());
-    }
-
-    stop() {
-      gsap.to(this.canvas, { opacity: 0, duration: 2 });
-    }
+  function sizeCanvas(canvas: HTMLCanvasElement) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = innerWidth * dpr;
+    canvas.height = innerHeight * dpr;
+    canvas.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  // Initialize snow
-  const snowCanvas = document.getElementById('snow-canvas') as HTMLCanvasElement;
-  if (!snowCanvas) throw new Error('Snow canvas not found');
-  const snow = new SnowSystem(snowCanvas);
-  snow.animate();
+  function seedSnow() {
+    const count = Math.min(170, Math.floor(innerWidth / 8));
+    flakes = Array.from({ length: count }, () => ({
+      x: Math.random() * innerWidth,
+      y: Math.random() * innerHeight,
+      r: Math.random() * 2 + 0.5,
+      vy: Math.random() * 0.6 + 0.25,
+      vx: Math.random() * 0.4 - 0.1,
+      a: Math.random() * 0.5 + 0.3,
+    }));
+  }
 
-  // Announce for screen readers
-  const announce = (message: string) => {
-    if (srAnnounce) srAnnounce.textContent = message;
+  // ── Fagulhas que formam a porta ───────────────────────────────
+  type Mote = {
+    x: number; y: number; sx: number; sy: number; tx: number; ty: number;
+    start: number; dur: number; size: number; done: boolean; orbit?: number;
   };
+  const moteCanvas = $<HTMLCanvasElement>('mote-canvas');
+  const moteCtx = moteCanvas.getContext('2d');
+  let motes: Mote[] = [];
+  let ambient: Mote[] = [];
 
-  // Redirect to main site
-  const redirectToSite = () => {
-    location.replace('/index/');
-  };
+  /** Pontos do contorno da porta (moldura), já em coordenadas de tela. */
+  function outlinePoints(count: number): { x: number; y: number }[] {
+    const paths = [...frameSvg.querySelectorAll<SVGPathElement>('path.draw')];
+    const ctm = frameSvg.getScreenCTM();
+    if (!ctm) return [];
+    const total = paths.reduce((sum, p) => sum + p.getTotalLength(), 0);
+    const points: { x: number; y: number }[] = [];
+    for (const path of paths) {
+      const len = path.getTotalLength();
+      const n = Math.max(4, Math.round((count * len) / total));
+      for (let i = 0; i < n; i++) {
+        const p = path.getPointAtLength((len * i) / (n - 1));
+        const pt = new DOMPoint(p.x, p.y).matrixTransform(ctm);
+        points.push({ x: pt.x, y: pt.y });
+      }
+    }
+    return points;
+  }
 
-  // Main sequence
-  const runExperience = async () => {
-    if (reducedMotion) {
-      // Fast forward for reduced motion
-      audioSystem.init();
-      audioSystem.transitionTo('tavern', 300);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      redirectToSite();
-      return;
+  function launchMotes(now: number) {
+    const points = outlinePoints(innerWidth < 600 ? 110 : 170);
+    motes = points.map((target, i) => {
+      // Saem da tempestade: bordas da tela e pontos ao acaso.
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.max(innerWidth, innerHeight) * (0.45 + Math.random() * 0.35);
+      const sx = innerWidth / 2 + Math.cos(angle) * radius;
+      const sy = innerHeight / 2 + Math.sin(angle) * radius;
+      return {
+        x: sx, y: sy, sx, sy, tx: target.x, ty: target.y,
+        start: now + (i % 40) * 22 + Math.random() * 500,
+        dur: 1500 + Math.random() * 900,
+        size: 1.2 + Math.random() * 1.8,
+        done: false,
+      };
+    });
+  }
+
+  function seedAmbient() {
+    ambient = Array.from({ length: innerWidth < 600 ? 18 : 30 }, () => ({
+      x: 0, y: 0, sx: 0, sy: 0, tx: 0, ty: 0,
+      start: Math.random() * 1000, dur: 4000 + Math.random() * 5000,
+      size: 0.8 + Math.random() * 1.6, done: false, orbit: Math.random() * Math.PI * 2,
+    }));
+  }
+  let ambientOn = false;
+
+  const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+  // Brilho pré-renderizado uma vez: desenhar uma imagem é bem mais barato que
+  // criar um gradiente por fagulha a cada quadro (importante no celular).
+  const glowSprite = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    if (g) {
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255, 248, 225, 1)');
+      grad.addColorStop(0.35, 'rgba(255, 214, 140, 0.6)');
+      grad.addColorStop(1, 'rgba(255, 190, 100, 0)');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+    }
+    return c;
+  })();
+
+  function drawGlow(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, alpha: number) {
+    const r = size * 4;
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.drawImage(glowSprite, x - r, y - r, r * 2, r * 2);
+    ctx.globalAlpha = 1;
+  }
+
+  function frame(now: number) {
+    if (snowCtx) {
+      snowCtx.clearRect(0, 0, innerWidth, innerHeight);
+      for (const f of flakes) {
+        f.y += f.vy; f.x += f.vx;
+        if (f.y > innerHeight) { f.y = -8; f.x = Math.random() * innerWidth; }
+        if (f.x > innerWidth) f.x = 0; else if (f.x < 0) f.x = innerWidth;
+        snowCtx.globalAlpha = f.a;
+        snowCtx.fillStyle = '#fff';
+        snowCtx.beginPath();
+        snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        snowCtx.fill();
+      }
+      snowCtx.globalAlpha = 1;
     }
 
-    announce('Tempestade de neve. Uma porta misteriosa aparece.');
+    if (moteCtx) {
+      moteCtx.clearRect(0, 0, innerWidth, innerHeight);
+      moteCtx.globalCompositeOperation = 'lighter';
+      for (const m of motes) {
+        if (m.done || now < m.start) continue;
+        const t = Math.min(1, (now - m.start) / m.dur);
+        const e = easeInOut(t);
+        // Curva: vão em espiral suave até o alvo.
+        const swirl = Math.sin(t * Math.PI) * 60;
+        const dx = m.tx - m.sx, dy = m.ty - m.sy;
+        const len = Math.hypot(dx, dy) || 1;
+        m.x = m.sx + dx * e + (-dy / len) * swirl;
+        m.y = m.sy + dy * e + (dx / len) * swirl;
+        const alpha = t < 0.85 ? Math.min(1, t * 3) : (1 - t) / 0.15;
+        drawGlow(moteCtx, m.x, m.y, m.size, Math.max(0, alpha));
+        if (t >= 1) m.done = true;
+      }
+      if (ambientOn) {
+        const rect = frameSvg.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+        for (const a of ambient) {
+          const t = ((now + a.start) % a.dur) / a.dur;
+          const ang = (a.orbit ?? 0) + t * Math.PI * 0.6;
+          const rx = rect.width * (0.55 + 0.15 * Math.sin(a.dur)), ry = rect.height * 0.5;
+          const x = cx + Math.cos(ang) * rx * (0.7 + 0.3 * t);
+          const y = cy + Math.sin(ang) * ry - t * 40;
+          drawGlow(moteCtx, x, y, a.size, Math.sin(t * Math.PI) * 0.7);
+        }
+      }
+      moteCtx.globalCompositeOperation = 'source-over';
+    }
+    requestAnimationFrame(frame);
+  }
 
-    // Initialize audio with tavern music
+  function resize() {
+    sizeCanvas(snowCanvas);
+    sizeCanvas(moteCanvas);
+    seedSnow();
+  }
+
+  // ── Linha do tempo da formação ────────────────────────────────
+  const drawPaths = [...frameSvg.querySelectorAll<SVGPathElement>('path.draw')];
+  for (const p of drawPaths) {
+    const len = p.getTotalLength();
+    p.style.strokeDasharray = `${len}`;
+    p.style.strokeDashoffset = `${len}`;
+  }
+
+  // Joias ao longo do arco interno.
+  const gemsGroup = frameSvg.querySelector('#arch-gems')!;
+  const innerArch = $<SVGPathElement>('inner-arch');
+  const archLen = innerArch.getTotalLength();
+  const gems: SVGElement[] = [];
+  for (let i = 1; i <= 9; i++) {
+    const p = innerArch.getPointAtLength(archLen * (0.18 + (0.64 * i) / 10));
+    const gem = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    gem.setAttribute('d', `M${p.x} ${p.y - 5} L${p.x + 4} ${p.y} L${p.x} ${p.y + 5} L${p.x - 4} ${p.y} Z`);
+    gem.style.opacity = '0';
+    gemsGroup.appendChild(gem);
+    gems.push(gem);
+  }
+
+  function buildFormation(): gsap.core.Timeline {
+    const tl = gsap.timeline({ paused: true });
+    tl.to('#door-spark', { opacity: 1, scale: 1, duration: 0.9, ease: 'power2.out' }, 0)
+      .to('#door-spark', { scale: 1.6, duration: 0.6, yoyo: true, repeat: 1, ease: 'sine.inOut' }, 0.9)
+      .to('#narrative-text', { opacity: 0, y: -20, duration: 1, ease: 'power2.in' }, 1.6)
+      .add(() => launchMotes(performance.now()), 2.2)
+      .to('#door-spark', { top: '50%', scale: 0.6, duration: 1.2, ease: 'power2.inOut' }, 2.2)
+      .to('#door-seam', { opacity: 1, scaleY: 1, duration: 1.4, ease: 'power3.out' }, 3.0)
+      .to('#door-spark', { opacity: 0, duration: 0.6 }, 3.4)
+      .to('#door-halo', { opacity: 0.6, duration: 2.5, ease: 'sine.out' }, 3.0)
+      .to('#door-floor', { opacity: 1, duration: 3, ease: 'sine.out' }, 3.5)
+      .set('.door-frame .draw', { opacity: 1 }, 3.3)
+      .to('.door-frame .draw.outer', { strokeDashoffset: 0, duration: 2.3, ease: 'power2.inOut' }, 3.3)
+      .to('.door-frame .draw.base', { strokeDashoffset: 0, duration: 1.4, ease: 'power2.out' }, 3.5)
+      .to('.door-frame .draw.inner', { strokeDashoffset: 0, duration: 1.8, ease: 'power2.inOut' }, 4.6)
+      .fromTo('#keystone', { opacity: 0, scale: 0.2 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(3)' }, 5.5)
+      .to(gems, { opacity: 1, duration: 0.25, stagger: 0.07 }, 5.7)
+      .to('.door-leaf', { opacity: 1, duration: 1.6, ease: 'power1.inOut' }, 6.2)
+      .to('#door-seam', { opacity: 0.55, duration: 1.2 }, 6.6)
+      .to('#door-halo', { opacity: 1, duration: 0.5, ease: 'power2.out' }, 7.2)
+      .to('#door-halo', { opacity: 0.75, duration: 1.2, ease: 'sine.inOut' }, 7.7)
+      .add(() => { ambientOn = true; }, 7.4)
+      .to('#door-prompt', { opacity: 1, duration: 1.2 }, 8.2);
+    return tl;
+  }
+
+  function idle() {
+    gsap.to('#door-float', { y: -6, duration: 3, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+    gsap.to('#door-halo', { opacity: 0.95, duration: 2.4, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+    gsap.to('#door-prompt', { opacity: 0.45, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1 });
+  }
+
+  function openDoor(): Promise<void> {
+    return new Promise((resolve) => {
+      gsap.killTweensOf(['#door-float', '#door-halo', '#door-prompt']);
+      const tl = gsap.timeline({ onComplete: resolve });
+      const medals = document.querySelectorAll('.door-leaf use');
+      tl.to('#door-prompt', { opacity: 0, duration: 0.4 }, 0)
+        .to('#door-seam', { opacity: 1, scaleX: 3, duration: 0.5, ease: 'power2.out' }, 0)
+        .to(medals, { filter: 'brightness(1.25)', duration: 0.4 }, 0)
+        .to('#door-inner-light', { opacity: 1, duration: 0.6 }, 0.35)
+        .to('#leaf-left', { rotationY: -108, duration: 2.2, ease: 'power2.inOut' }, 0.45)
+        .to('#leaf-right', { rotationY: 108, duration: 2.2, ease: 'power2.inOut' }, 0.45)
+        .to('#door-seam', { opacity: 0, duration: 0.6 }, 0.9)
+        .to('#door-halo', { opacity: 1, scale: 1.6, duration: 2, ease: 'power2.in' }, 0.8)
+        .to('#door-float', { scale: 3.2, duration: 2.6, ease: 'power3.in' }, 1.2)
+        .to(['#door-frame', '#snow-canvas'], { opacity: 0, duration: 1.4 }, 2.2)
+        .to('#flash', { opacity: 1, duration: 0.9, ease: 'power2.in' }, 2.7);
+    });
+  }
+
+  // ── Execução ──────────────────────────────────────────────────
+  async function runExperience() {
+    resize();
+    seedAmbient();
+    requestAnimationFrame(frame);
+    announce('Tempestade de neve. Uma luz surge e forma uma porta.');
     audioSystem.init();
     audioSystem.transitionTo('tavern');
 
-    // Wait a bit before allowing interaction
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const formation = buildFormation();
+    let opened = false;
 
-    // Door is now interactive
-    announce('Clique na porta para abrir');
+    const open = async () => {
+      if (opened) return;
+      opened = true;
+      doorBtn.disabled = true;
+      // Tocou antes de terminar de formar: completa na hora e abre.
+      if (formation.progress() < 1) formation.progress(1);
+      if (!audioSystem.ready) audioSystem.init();
+      audioSystem.setMuted(false, 600);
+      audioSystem.transitionTo('door-open', 400);
+      soundBtn?.setAttribute('aria-pressed', 'true');
+      announce('Abrindo a porta...');
+      if (reducedMotion) {
+        redirectToSite();
+        return;
+      }
+      await openDoor();
+      audioSystem.transitionTo('tavern', 600);
+      await wait(250);
+      redirectToSite();
+    };
 
-    // Wait for door click
-    await new Promise<void>((resolve) => {
-      const handleDoorClick = (e: Event) => {
-        e.preventDefault();
-        doorBtn?.removeEventListener('click', handleDoorClick);
-        document.removeEventListener('keydown', handleKeydown);
-        
-        // Enable audio on interaction if not ready
-        if (!audioSystem.ready) {
-          audioSystem.init();
-          audioSystem.transitionTo('tavern');
-        }
-        audioSystem.setMuted(false, 600);
-        soundBtn?.setAttribute('aria-pressed', 'true');
-        
-        resolve();
-      };
-
-      const handleKeydown = (e: KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          handleDoorClick(e);
-        }
-      };
-
-      doorBtn?.addEventListener('click', handleDoorClick);
-      document.addEventListener('keydown', handleKeydown);
+    doorBtn.addEventListener('click', open);
+    document.addEventListener('keydown', (event) => {
+      if ((event.key === 'Enter' || event.key === ' ') && !doorBtn.disabled) {
+        event.preventDefault();
+        void open();
+      }
     });
 
-    announce('Abrindo a porta...');
+    if (reducedMotion) {
+      formation.progress(1);
+      ambientOn = false;
+      doorBtn.disabled = false;
+      announce('Uma porta está à sua frente. Toque para entrar.');
+      return;
+    }
 
-    // Fade out narrative text and button
-    gsap.to('.narrative-text', { opacity: 0, duration: 0.8 });
-    gsap.to('.door-button-simple', { opacity: 0, duration: 0.8 });
+    // As frases levam ~7 s; a luz surge junto com "Uma luz surge à sua frente".
+    await wait(6800);
+    doorBtn.disabled = false; // já dá para tocar (completa a formação)
+    formation.play();
+    formation.eventCallback('onComplete', () => {
+      announce('Uma porta de luz está à sua frente. Toque para entrar.');
+      idle();
+    });
+  }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Light burst transition
-    lightTransition?.classList.add('active');
-    lightBurst?.classList.add('expanding');
-    
-    // Fade out snow
-    snow.stop();
-
-    await new Promise(resolve => setTimeout(resolve, 2500));
-
-    // Redirect to main site
-    redirectToSite();
-  };
-
-  // Skip button handler
   skipBtn?.addEventListener('click', () => {
     audioSystem.init();
     audioSystem.transitionTo('tavern', 300);
     redirectToSite();
   });
 
-  // Sound toggle handler
   soundBtn?.addEventListener('click', () => {
     audioSystem.init();
     const muted = audioSystem.toggleMute();
@@ -810,11 +707,6 @@
     soundBtn.setAttribute('aria-label', muted ? 'Ativar som' : 'Desativar som');
   });
 
-  // Handle window resize
-  window.addEventListener('resize', () => {
-    snow.resize();
-  });
-
-  // Start the experience
-  runExperience();
+  window.addEventListener('resize', resize);
+  void runExperience();
 </script>
