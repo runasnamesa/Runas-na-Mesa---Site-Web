@@ -1,10 +1,52 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 export const ADMIN_COOKIE_NAME = 'rnm_master_session';
-export const ADMIN_COOKIE_VALUE = 'true';
-export const MASTER_USERNAME = 'Magnus';
-export const MASTER_PASSWORD = 'Hora1005@#';
+/** Sessão do painel: 8 horas. */
+export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8;
+
+/**
+ * Credenciais do painel vêm SÓ de variáveis de ambiente (Vercel → Settings →
+ * Environment Variables): ADMIN_USERNAME e ADMIN_PASSWORD (mínimo 12
+ * caracteres). Sem elas, o login fica desativado — nunca há senha no código,
+ * que é público.
+ */
+function adminCredentials(): { username: string; password: string } | null {
+  const username = process.env.ADMIN_USERNAME ?? import.meta.env.ADMIN_USERNAME;
+  const password = process.env.ADMIN_PASSWORD ?? import.meta.env.ADMIN_PASSWORD;
+  if (!username || !password || password.length < 12) return null;
+  return { username, password };
+}
+
+export function safeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+/** Assina com uma chave derivada da senha: trocar a senha derruba todas as sessões. */
+function sign(payload: string, password: string): string {
+  const key = createHmac('sha256', password).update('rnm-admin-session-v1').digest();
+  return createHmac('sha256', key).update(payload).digest('base64url');
+}
+
+/** Valor do cookie de sessão: `<expira-em-segundos>.<assinatura>`. */
+export function createSessionToken(nowMs = Date.now()): string | null {
+  const credentials = adminCredentials();
+  if (!credentials) return null;
+  const expiresAt = String(Math.floor(nowMs / 1000) + ADMIN_SESSION_TTL_SECONDS);
+  return `${expiresAt}.${sign(expiresAt, credentials.password)}`;
+}
+
+export function verifySessionToken(token: string | undefined, nowMs = Date.now()): boolean {
+  const credentials = adminCredentials();
+  if (!credentials || !token) return false;
+  const [expiresAt, signature] = token.split('.');
+  if (!expiresAt || !signature || !/^\d+$/.test(expiresAt)) return false;
+  if (Number(expiresAt) * 1000 <= nowMs) return false;
+  return safeEqual(signature, sign(expiresAt, credentials.password));
+}
 
 const ADMIN_DATA_PATH = path.join(process.cwd(), 'data', 'mestre-content.json');
 const DEFAULT_CONTENT = `
@@ -144,10 +186,15 @@ export async function deleteStoredPost(id: string) {
   return true;
 }
 
-export function verifyMasterLogin(username: string, password: string) {
-  return username === MASTER_USERNAME && password === MASTER_PASSWORD;
+export function verifyMasterLogin(username: string, password: string): boolean {
+  const credentials = adminCredentials();
+  if (!credentials) return false;
+  // Compara os dois sempre (sem curto-circuito) para não vazar qual errou.
+  const userOk = safeEqual(username, credentials.username);
+  const passOk = safeEqual(password, credentials.password);
+  return userOk && passOk;
 }
 
 export function isAuthenticatedCookie(cookie: { get(name: string): { value?: string } | undefined }) {
-  return cookie.get(ADMIN_COOKIE_NAME)?.value === ADMIN_COOKIE_VALUE;
+  return verifySessionToken(cookie.get(ADMIN_COOKIE_NAME)?.value);
 }

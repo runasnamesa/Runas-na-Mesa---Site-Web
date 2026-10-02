@@ -794,17 +794,3 @@ button, input, textarea { font: inherit; }
   .admin-save-button { width: 100%; justify-content: center; }
   .login-card { padding: 27px 22px; }
 }
-</style>
-<task_progress>
-- [x] Analisar estrutura completa do projeto
-- [x] Verificar servidor funcionando
-- [x] FASE 1: Welcome Scene cinematográfica
-- [ ] FASE 2: Painel Admin completo
-  - [x] Criar data/tasks.json
-  - [x] Criar lib/tasks.ts
-  - [x] Criar API endpoints (tasks)
-  - [x] Criar CSS separado (admin.css)
-  - [ ] Refatorar admin.astro com dashboard completo (tasks + agendamento)
-- [ ] FASE 3: Backend, SEO, Responsividade
-</task_progress>
-</write_to_file>

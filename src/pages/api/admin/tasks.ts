@@ -90,7 +90,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         });
     }
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Erro interno', details: String(err) }), {
+    return new Response(JSON.stringify({ error: 'Erro interno' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

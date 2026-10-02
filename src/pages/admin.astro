@@ -3,6 +3,7 @@ export const prerender = false;
 
 import { readStoredPosts, isAuthenticatedCookie } from '../lib/admin';
 import { readTasks } from '../lib/tasks';
+import '../styles/admin.css';
 
 const isAuthenticated = isAuthenticatedCookie(Astro.cookies);
 const posts = isAuthenticated ? await readStoredPosts() : [];
@@ -25,7 +26,6 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>Painel do Mestre — Runas na Mesa</title>
       <meta name="robots" content="noindex, nofollow" />
-      <link rel="stylesheet" href="/admin.css" />
     </head>
     <body class="admin-body">
       <div class="admin-app">
@@ -384,7 +384,6 @@ const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'nu
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>Entrar no painel — Runas na Mesa</title>
       <meta name="robots" content="noindex, nofollow" />
-      <link rel="stylesheet" href="/admin.css" />
     </head>
     <body class="login-body">
       <main class="login-shell">
