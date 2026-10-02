@@ -1,28 +1,50 @@
 ---
 /**
- * Abertura da Taverna — inspirada na tela de entrada de Genshin Impact
- * (Celestia Door): a porta não existe e, de repente, se MONTA a partir de
- * fragmentos que brotam do chão e se encaixam de baixo para cima. Aqui ela é
- * a porta dupla de uma taverna medieval: tábuas de madeira, ferragens
- * rebitadas, argolas, arco e batentes de pedra com neve. Ao tocar, as folhas
- * se entreabrem e a luz quente da lareira inunda a tela — e a taverna
- * (/index/) aparece.
+ * Abertura da Taverna — o viajante na nevasca.
  *
- * SVG + GSAP + canvas 2D (sem WebGL): leve e fluido no celular. A geometria
- * da porta é calculada aqui no build; cada pedra, tábua e ferragem é uma
- * peça (`.piece`) animada no cliente.
+ * Você é um viajante cansado e perdido; o peso da vida é a nevasca, e a cada
+ * passo o vento fica mais forte. No meio da escuridão, uma luz quente chama
+ * sua atenção (a janelinha de uma porta). Ao se aproximar, a porta da
+ * taverna se ergue da neve, peça por peça (como a Celestia Door de Genshin
+ * Impact). Ao tocar, ela se entreabre e a luz da lareira toma a tela.
+ *
+ * Um ambiente só: céu, montanhas, campo de neve e porta desenhados no mesmo
+ * traço e com a mesma luz fria da tempestade; o único calor da cena é o que
+ * escapa de dentro da porta. Neve e névoa passam também na frente da porta.
+ * SVG + GSAP + canvas 2D (sem WebGL), leve no celular.
  */
 
-// viewBox 300 × 480. Vão da porta: x 60–240, arco com centro (150, 200).
+// ── Montanhas (geradas no build, com sementes fixas) ─────────────────────
+function rng(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+function ridge(seed: number, base: number, amp: number, peaks: number) {
+  const r = rng(seed);
+  const pts: string[] = ['0 600'];
+  const step = 1600 / (peaks * 4);
+  for (let x = 0; x <= 1600; x += step) {
+    const phase = (x / 1600) * peaks * Math.PI * 2;
+    const y = base - amp * (0.55 + 0.45 * Math.sin(phase + seed)) * (0.6 + 0.4 * r()) - r() * amp * 0.25;
+    pts.push(`${x.toFixed(0)} ${y.toFixed(1)}`);
+  }
+  pts.push('1600 600');
+  return `M${pts.join(' L')} Z`;
+}
+const farRidge = ridge(7, 330, 210, 3);
+const nearRidge = ridge(19, 430, 150, 4);
+
+// ── Porta (viewBox 300 × 480; vão x 60–240, arco com centro em 150,200) ──
 const CX = 150;
 const SPRING = 200;
 const R_IN = 90;
 const R_OUT = 117;
 const BOTTOM = 450;
-
 const polar = (r: number, a: number) => [CX + r * Math.cos(a), SPRING - r * Math.sin(a)].map((n) => n.toFixed(2)).join(' ');
 
-// Aduelas do arco (9), com a chave central maior.
 const VOUSSOIRS = 9;
 const gap = 0.012;
 const voussoirs = Array.from({ length: VOUSSOIRS }, (_, i) => {
@@ -34,7 +56,6 @@ const voussoirs = Array.from({ length: VOUSSOIRS }, (_, i) => {
   return { d, key, order: Math.min(i, VOUSSOIRS - 1 - i) };
 });
 
-// Batentes: 5 pedras de cada lado, alternando largura (cunhais).
 const jambs = Array.from({ length: 5 }, (_, i) => {
   const y1 = BOTTOM - i * 50;
   const y0 = y1 - 50 + 1.5;
@@ -45,12 +66,10 @@ const jambs = Array.from({ length: 5 }, (_, i) => {
   ];
 }).flat();
 
-// Tábuas: 3 por folha, cortadas pelo arco (clipPath das folhas).
 const planks = [60, 90, 120, 150, 180, 210].map((x, i) => ({
   x: x + 0.6,
   w: 28.8,
   left: i < 3,
-  // veios ondulados (desenho fixo por tábua, para não mudar a cada build)
   grain: [0.25, 0.55, 0.8].map((f, k) => {
     const gx = x + 30 * f;
     const wave = 2 + ((i + k) % 3);
@@ -58,12 +77,20 @@ const planks = [60, 90, 120, 150, 180, 210].map((x, i) => ({
   }),
 }));
 
-// Ferragens (dobradiças compridas) e rebites.
-const straps = [218, 392].flatMap((y) => [
+const straps = [205, 392].flatMap((y) => [
   { y, x0: 60, x1: 136, left: true },
   { y, x0: 164, x1: 240, left: false },
 ]);
-// Neve assentada sobre o arco: dois trechos (a chave do arco fica de fora).
+const rivets = straps.flatMap((s) =>
+  Array.from({ length: 5 }, (_, k) => ({ x: s.left ? s.x0 + 10 + k * 15 : s.x1 - 10 - k * 15, y: s.y, left: s.left })),
+);
+
+// Janelinhas gradeadas: a luz que o viajante vê de longe.
+const windows = [
+  { x: 100, left: true },
+  { x: 166, left: false },
+].map((w) => ({ ...w, y: 236, width: 34, height: 40 }));
+
 const snowArc = (from: number, to: number) => {
   const steps = 14;
   const top: string[] = [];
@@ -74,30 +101,46 @@ const snowArc = (from: number, to: number) => {
     top.push(polar(R_OUT + bump, a));
     bottom.unshift(polar(R_OUT - 1.5, a));
   }
-  return `M${top.join(" L")} L${bottom.join(" L")} Z`;
+  return `M${top.join(' L')} L${bottom.join(' L')} Z`;
 };
 const snowCaps = [snowArc(162, 101), snowArc(79, 18)];
-
-const rivets = straps.flatMap((s) =>
-  Array.from({ length: 5 }, (_, k) => ({ x: s.left ? s.x0 + 10 + k * 15 : s.x1 - 10 - k * 15, y: s.y, left: s.left })),
-);
 ---
 
 <div id="welcome-experience" class="welcome-experience">
-  <div class="bg-layer">
-    <div class="bg-mountains"></div>
-    <div class="bg-overlay"></div>
+  <!-- ── Ambiente ── -->
+  <div class="world" id="world">
+    <div class="sky"></div>
+    <svg class="ridge ridge--far" id="ridge-far" viewBox="0 0 1600 600" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="far-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5b6f8a" />
+          <stop offset="0.35" stop-color="#2c3b52" />
+          <stop offset="1" stop-color="#1b2738" />
+        </linearGradient>
+        <linearGradient id="near-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#3a4a62" />
+          <stop offset="0.4" stop-color="#1a2535" />
+          <stop offset="1" stop-color="#121b28" />
+        </linearGradient>
+      </defs>
+      <path d={farRidge} fill="url(#far-fill)" />
+    </svg>
+    <svg class="ridge ridge--near" id="ridge-near" viewBox="0 0 1600 600" preserveAspectRatio="none" aria-hidden="true">
+      <path d={nearRidge} fill="url(#near-fill)" />
+    </svg>
+    <div class="ground" id="ground"></div>
+    <div class="horizon-haze"></div>
   </div>
 
-  <canvas id="snow-canvas" class="fx-canvas fx-canvas--snow"></canvas>
+  <canvas id="snow-back" class="fx-canvas fx-canvas--back"></canvas>
 
-  <div class="door-stage" aria-hidden="true">
+  <!-- ── Porta ── -->
+  <div class="door-anchor" id="door-anchor" aria-hidden="true">
     <div class="door-float" id="door-float">
-      <div class="door-floor" id="door-floor"></div>
-      <div class="door-halo" id="door-halo"></div>
+      <div class="door-spill" id="door-spill"></div>
       <div class="door-inner-light" id="door-inner-light"></div>
+      <div class="lure" id="lure"></div>
 
-      <!-- Folhas (camadas próprias para abrirem em 3D). -->
       {[true, false].map((left) => (
         <div class={`door-leaf ${left ? 'door-leaf--left' : 'door-leaf--right'}`} id={left ? 'leaf-left' : 'leaf-right'}>
           <svg viewBox="0 0 300 480" class="door-svg">
@@ -105,25 +148,34 @@ const rivets = straps.flatMap((s) =>
               {planks.filter((p) => p.left === left).map((p) => (
                 <g class="piece plank">
                   <rect x={p.x} y="100" width={p.w} height="352" fill="url(#wood)" />
-                  <g fill="none" stroke="#2a170c" stroke-width="1.1" opacity="0.45">
+                  <g fill="none" stroke="#140b05" stroke-width="1.1" opacity="0.55">
                     {p.grain.map((d) => <path d={d} />)}
                   </g>
-                  <rect x={p.x} y="100" width="2.2" height="352" fill="#7a4a2a" opacity="0.5" />
+                  <rect x={p.x} y="100" width="1.6" height="352" fill="#5a3a24" opacity="0.45" />
                 </g>
               ))}
             </g>
+            {windows.filter((w) => w.left === left).map((w) => (
+              <g class="piece window">
+                <rect x={w.x - 3} y={w.y - 3} width={w.width + 6} height={w.height + 6} rx="2" fill="url(#iron)" />
+                <rect class="window-glass" x={w.x} y={w.y} width={w.width} height={w.height} fill="url(#window-warm)" />
+                <g stroke="#15171a" stroke-width="3">
+                  <path d={`M${w.x + w.width / 3} ${w.y} V${w.y + w.height} M${w.x + (2 * w.width) / 3} ${w.y} V${w.y + w.height} M${w.x} ${w.y + w.height / 2} H${w.x + w.width}`} />
+                </g>
+              </g>
+            ))}
             {straps.filter((s) => s.left === left).map((s) => (
               <g class="piece iron">
                 <rect x={s.x0} y={s.y - 7} width={s.x1 - s.x0} height="14" rx="3" fill="url(#iron)" />
                 <circle cx={s.left ? s.x1 : s.x0} cy={s.y} r="9" fill="url(#iron)" />
                 {rivets.filter((r) => r.left === left && r.y === s.y).map((r) => (
-                  <circle cx={r.x} cy={r.y} r="2.4" fill="#8d8a82" stroke="#1b1b1a" stroke-width="0.6" />
+                  <circle cx={r.x} cy={r.y} r="2.3" fill="#5d636b" stroke="#0f1013" stroke-width="0.6" />
                 ))}
               </g>
             ))}
             <g class="piece handle">
-              <circle cx={left ? 140 : 160} cy="300" r="7" fill="url(#iron)" />
-              <circle class="ring" cx={left ? 140 : 160} cy="313" r="11" fill="none" stroke="#3a3936" stroke-width="3.4" />
+              <circle cx={left ? 140 : 160} cy="318" r="6.5" fill="url(#iron)" />
+              <circle class="ring" cx={left ? 140 : 160} cy="330" r="10.5" fill="none" stroke="#2a2d32" stroke-width="3.2" />
             </g>
           </svg>
         </div>
@@ -132,79 +184,76 @@ const rivets = straps.flatMap((s) =>
       <div class="door-seam" id="door-seam"></div>
       <div class="door-sill-light" id="door-sill-light"></div>
 
-      <!-- Moldura de pedra (na frente das folhas). -->
       <svg viewBox="0 0 300 480" class="door-svg door-frame" id="door-frame">
         <defs>
           <linearGradient id="wood" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#4b2a17" />
-            <stop offset="0.45" stop-color="#6a3d22" />
-            <stop offset="1" stop-color="#3f2313" />
+            <stop offset="0" stop-color="#2e1c10" />
+            <stop offset="0.45" stop-color="#43291a" />
+            <stop offset="1" stop-color="#28180d" />
           </linearGradient>
           <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#5c5a55" />
-            <stop offset="0.5" stop-color="#34332f" />
-            <stop offset="1" stop-color="#1d1c1a" />
+            <stop offset="0" stop-color="#4a5059" />
+            <stop offset="0.5" stop-color="#262a30" />
+            <stop offset="1" stop-color="#121417" />
           </linearGradient>
-          <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#8a857c" />
-            <stop offset="1" stop-color="#55514b" />
+          <!-- Pedra fria: topo iluminado pela noite, base na sombra. -->
+          <linearGradient id="stone" gradientUnits="userSpaceOnUse" x1="0" y1="70" x2="0" y2="470">
+            <stop offset="0" stop-color="#7d8a9c" />
+            <stop offset="0.55" stop-color="#4e5867" />
+            <stop offset="1" stop-color="#2c333d" />
+          </linearGradient>
+          <linearGradient id="window-warm" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffd59a" />
+            <stop offset="1" stop-color="#e0893c" />
           </linearGradient>
           <clipPath id="clip-left"><path d="M60 452 L60 200 A90 90 0 0 1 150 110 L150 452 Z" /></clipPath>
           <clipPath id="clip-right"><path d="M240 452 L240 200 A90 90 0 0 0 150 110 L150 452 Z" /></clipPath>
-          <!-- Silhueta da porta em unidades da própria caixa (brilho que passa). -->
           <clipPath id="door-silhouette" clipPathUnits="objectBoundingBox">
-            <path d="M0.1 0.98 L0.1 0.42 A0.4 0.25 0 0 1 0.9 0.42 L0.9 0.98 Z" />
+            <path d="M0.1 0.985 L0.1 0.4 A0.4 0.27 0 0 1 0.9 0.4 L0.9 0.985 Z" />
           </clipPath>
         </defs>
 
-        <!-- Soleira -->
         {[[18, 104], [104, 196], [196, 282]].map(([x0, x1]) => (
           <g class="piece stone sill">
-            <rect x={x0 + 0.8} y="451" width={x1 - x0 - 1.6} height="20" rx="2" fill="url(#stone)" stroke="#3c3934" stroke-width="1" />
-            <rect x={x0 + 2} y="451" width={x1 - x0 - 4} height="3" fill="#a9a398" opacity="0.6" />
+            <rect x={x0 + 0.8} y="451" width={x1 - x0 - 1.6} height="20" rx="2" fill="url(#stone)" stroke="#1d2229" stroke-width="1" />
           </g>
         ))}
-        <!-- Batentes -->
         {jambs.map((j) => (
           <g class="piece stone jamb" data-order={j.order}>
-            <rect x={j.x} y={j.y} width={j.w} height={j.h} rx="2" fill="url(#stone)" stroke="#3c3934" stroke-width="1" />
-            <rect x={j.x + 1.5} y={j.y + 1.5} width={j.w - 3} height="3" fill="#a9a398" opacity="0.5" />
+            <rect x={j.x} y={j.y} width={j.w} height={j.h} rx="2" fill="url(#stone)" stroke="#1d2229" stroke-width="1" />
+            <rect x={j.x + 1.5} y={j.y + 1.5} width={j.w - 3} height="2.5" fill="#9fb0c6" opacity="0.28" />
           </g>
         ))}
-        <!-- Arco -->
         {voussoirs.map((v) => (
-          <path
-            class={`piece stone voussoir ${v.key ? 'keystone' : ''}`}
-            data-order={v.order}
-            d={v.d}
-            fill="url(#stone)"
-            stroke="#3c3934"
-            stroke-width="1"
-          />
+          <path class={`piece stone voussoir ${v.key ? 'keystone' : ''}`} data-order={v.order} d={v.d} fill="url(#stone)" stroke="#1d2229" stroke-width="1" />
         ))}
-        <!-- Neve acumulada (aparece depois da montagem) -->
-        <g class="snow-cap" fill="#f3f6fb">
-          {snowCaps.map((d) => <path d={d} opacity="0.95" />)}
-          <path d="M136 69 Q150 62 164 69 L164 72 L136 72 Z" opacity="0.95" />
-          <path d="M16 452 C40 444 80 446 104 449 C130 444 170 444 196 449 C222 445 262 444 284 452 L284 455 L16 455 Z" opacity="0.85" />
+        <g class="snow-cap" fill="#c3cfde">
+          {snowCaps.map((d) => <path d={d} />)}
+          <path d="M136 69 Q150 62 164 69 L164 72 L136 72 Z" />
+          <path d="M14 456 C40 446 80 449 104 451 C130 447 170 447 196 451 C222 448 262 446 286 456 L286 474 L14 474 Z" opacity="0.9" />
         </g>
       </svg>
 
-      <div class="door-glint" id="door-glint"></div>
+      <!-- Luz da noite sobre a porta: mesma luz fria do resto da cena. -->
+      <div class="door-grade" id="door-grade"></div>
     </div>
   </div>
 
-  <canvas id="fx-canvas" class="fx-canvas fx-canvas--fx"></canvas>
+  <div class="fog fog--a" id="fog-a"></div>
+  <div class="fog fog--b" id="fog-b"></div>
+  <canvas id="snow-front" class="fx-canvas fx-canvas--front"></canvas>
+  <div class="vignette"></div>
 
   <div class="narrative" id="narrative-text">
-    <p class="narrative-line" style="animation-delay: 0.5s;">O vento uiva ao seu redor.</p>
-    <p class="narrative-line" style="animation-delay: 2s;">A neve cega seus olhos.</p>
-    <p class="narrative-line" style="animation-delay: 3.5s;">O frio penetra até os ossos.</p>
-    <p class="narrative-line narrative-line--emphasis" style="animation-delay: 5s;">Então, na escuridão da tempestade...</p>
-    <p class="narrative-line narrative-line--emphasis" style="animation-delay: 6.5s;">Uma luz surge à sua frente.</p>
+    <p class="narrative-line" style="animation-delay: 0.6s;">Cansado. Perdido.</p>
+    <p class="narrative-line" style="animation-delay: 1.9s;">O peso da vida fica mais denso a cada passo.</p>
+    <p class="narrative-line" style="animation-delay: 3.2s;">O vento aumenta. O frio não tem piedade.</p>
+    <p class="narrative-line" style="animation-delay: 4.5s;">Sozinho na montanha gelada, você sente que é o fim.</p>
+    <p class="narrative-line narrative-line--emphasis" style="animation-delay: 6s;">Então, no meio da escuridão...</p>
+    <p class="narrative-line narrative-line--emphasis" style="animation-delay: 7.2s;">uma luz chama sua atenção.</p>
   </div>
+  <p class="caption" id="caption">Ao se aproximar, você vê uma porta.</p>
 
-  <!-- Toda a porta é o botão (área de toque grande no celular). -->
   <button class="door-hit" id="door-btn" type="button" aria-label="Abrir a porta e entrar na taverna" disabled></button>
   <p class="door-prompt" id="door-prompt" aria-hidden="true">Toque na porta para entrar</p>
 
@@ -236,68 +285,100 @@ const rivets = straps.flatMap((s) =>
   .welcome-experience {
     position: fixed;
     inset: 0;
-    background: #0a0e15;
     overflow: hidden;
+    background: #070b13;
     font-family: 'Cinzel', serif;
     z-index: 9999;
-    --door-h: min(64vh, 560px);
+    --horizon: 60%;
+    --door-h: min(56vh, 500px);
     --door-w: calc(var(--door-h) * 0.625);
+    --door-base: 12vh;
   }
 
-  .bg-layer { position: absolute; inset: 0; z-index: 1; }
-  .bg-mountains {
-    position: absolute;
-    inset: -20px;
-    background:
-      linear-gradient(180deg, rgba(10, 14, 21, 0.3) 0%, rgba(10, 14, 21, 0.7) 50%, rgba(10, 14, 21, 0.95) 100%),
-      url('https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=1920&q=80') center/cover;
-    filter: blur(2px) brightness(0.4) contrast(1.1);
-  }
-  .bg-overlay {
+  /* Ambiente */
+  .world { position: absolute; inset: 0; z-index: 1; }
+  .sky {
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse at 50% 45%, transparent 0%, rgba(0, 0, 0, 0.45) 60%, rgba(0, 0, 0, 0.85) 100%);
+    background:
+      radial-gradient(ellipse 60% 40% at 30% 18%, rgba(120, 145, 180, 0.18), transparent 70%),
+      linear-gradient(180deg, #060a12 0%, #0d1625 40%, #1a2639 var(--horizon), #1a2639 100%);
+  }
+  .ridge {
+    position: absolute;
+    left: -5%;
+    width: 110%;
+    bottom: calc(100% - var(--horizon));
+    height: 46%;
+    transform-origin: 50% 100%;
+  }
+  .ridge--far { opacity: 0.85; }
+  .ridge--near { height: 34%; }
+  .ground {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    top: var(--horizon);
+    bottom: 0;
+    transform-origin: 50% 0;
+    background:
+      radial-gradient(ellipse 50% 30% at 30% 40%, rgba(160, 180, 205, 0.08), transparent 70%),
+      radial-gradient(ellipse 40% 25% at 75% 70%, rgba(160, 180, 205, 0.06), transparent 70%),
+      linear-gradient(180deg, #243245 0%, #2b3a4f 12%, #233046 45%, #151e2b 100%);
+  }
+
+  /* Névoa baixa no horizonte: céu, montanha e neve se fundem. */
+  .horizon-haze {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(var(--horizon) - 9%);
+    height: 18%;
+    background: linear-gradient(180deg, transparent, rgba(80, 100, 130, 0.55) 50%, transparent);
+    filter: blur(6px);
   }
 
   .fx-canvas { position: absolute; inset: 0; pointer-events: none; }
-  .fx-canvas--snow { z-index: 2; }
-  .fx-canvas--fx { z-index: 7; }
+  .fx-canvas--back { z-index: 2; }
+  .fx-canvas--front { z-index: 7; }
 
-  /* Porta */
-  .door-stage {
+  /* Porta: base fica no chão; a "câmera" se aproxima escalando a partir da base. */
+  .door-anchor {
     position: absolute;
-    inset: 0;
-    z-index: 5;
-    display: grid;
-    place-items: center;
+    left: 50%;
+    bottom: var(--door-base);
+    width: var(--door-w);
+    height: var(--door-h);
+    margin-left: calc(var(--door-w) / -2);
+    z-index: 4;
+    transform-origin: 50% 100%;
     perspective: 1200px;
     pointer-events: none;
   }
-  .door-float {
-    position: relative;
-    width: var(--door-w);
-    height: var(--door-h);
-    transform-style: preserve-3d;
-  }
+  .door-float { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; }
   .door-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-  .door-floor {
+  .door-frame .piece, .door-leaf .piece { transform-box: fill-box; }
+  .snow-cap { opacity: 0; }
+
+  /* Calor que escapa da porta e ilumina a neve e a névoa à frente. */
+  .door-spill {
     position: absolute;
     left: 50%;
-    bottom: -7%;
-    width: 210%;
-    height: 24%;
+    bottom: -14%;
+    width: 230%;
+    height: 34%;
     transform: translateX(-50%);
-    background: radial-gradient(ellipse at center, rgba(255, 190, 110, 0.4) 0%, rgba(230, 140, 60, 0.14) 40%, transparent 70%);
+    background: radial-gradient(ellipse at 50% 35%, rgba(255, 170, 90, 0.32) 0%, rgba(220, 120, 50, 0.1) 40%, transparent 70%);
     opacity: 0;
   }
-  .door-halo {
+  .lure {
     position: absolute;
     left: 50%;
-    top: 50%;
-    width: 240%;
-    height: 160%;
+    top: 52%;
+    width: 260%;
+    height: 150%;
     transform: translate(-50%, -50%);
-    background: radial-gradient(ellipse at center, rgba(255, 200, 120, 0.22) 0%, rgba(230, 150, 70, 0.08) 40%, transparent 68%);
+    background: radial-gradient(ellipse at center, rgba(255, 224, 170, 1) 0%, rgba(255, 180, 95, 0.75) 4%, rgba(255, 150, 70, 0.28) 14%, rgba(200, 110, 50, 0.08) 35%, transparent 60%);
     opacity: 0;
   }
   .door-inner-light {
@@ -307,19 +388,12 @@ const rivets = straps.flatMap((s) =>
     top: 23%;
     bottom: 5.8%;
     border-radius: 50% 50% 0 0 / 34% 34% 0 0;
-    background: radial-gradient(ellipse at 50% 60%, #fffaf0 0%, #ffe2a8 30%, #ffb45a 65%, #c8641e 100%);
-    box-shadow: 0 0 90px 30px rgba(255, 190, 110, 0.55);
-    /* Atrás do giro das folhas (que entram na casa): senão as cobre em 3D. */
+    background: radial-gradient(ellipse at 50% 60%, #fff3dc 0%, #ffd292 30%, #ff9f4a 65%, #b2551a 100%);
+    box-shadow: 0 0 80px 24px rgba(255, 160, 80, 0.45);
     transform: translateZ(-70px) scale(1.06);
     opacity: 0;
   }
-  .door-leaf {
-    position: absolute;
-    inset: 0;
-    backface-visibility: hidden;
-    will-change: transform;
-  }
-  /* Dobradiças: x = 60 e 240 de 300. */
+  .door-leaf { position: absolute; inset: 0; backface-visibility: hidden; will-change: transform; }
   .door-leaf--left { transform-origin: 20% 50%; }
   .door-leaf--right { transform-origin: 80% 50%; }
   .door-seam {
@@ -329,136 +403,163 @@ const rivets = straps.flatMap((s) =>
     bottom: 6%;
     width: 2px;
     margin-left: -1px;
-    background: linear-gradient(180deg, transparent, #ffd38a 12%, #ffe6b8 50%, #ffd38a 88%, transparent);
-    box-shadow: 0 0 10px 2px rgba(255, 190, 100, 0.8);
+    background: linear-gradient(180deg, transparent, rgba(255, 196, 120, 0.85) 15%, rgba(255, 214, 150, 0.9) 50%, rgba(255, 196, 120, 0.85) 85%, transparent);
     opacity: 0;
   }
   .door-sill-light {
     position: absolute;
     left: 20%;
     right: 20%;
-    bottom: 5.6%;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, #ffcf85 15%, #ffe2ae 50%, #ffcf85 85%, transparent);
-    box-shadow: 0 0 14px 4px rgba(255, 180, 90, 0.7);
+    bottom: 5.7%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 190, 110, 0.9) 20%, rgba(255, 210, 145, 0.95) 50%, rgba(255, 190, 110, 0.9) 80%, transparent);
+    box-shadow: 0 2px 10px 2px rgba(255, 160, 80, 0.45);
     opacity: 0;
   }
-  .door-glint {
+  /* Luz da noite: clareia o topo-esquerda (lua), escurece a base; tinge de azul. */
+  .door-grade {
     position: absolute;
     left: 6%;
     right: 6%;
-    top: 16%;
-    bottom: 1%;
+    top: 13%;
+    bottom: 0;
     clip-path: url(#door-silhouette);
-    background: linear-gradient(105deg, transparent 35%, rgba(255, 245, 220, 0.55) 48%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 245, 220, 0.55) 52%, transparent 65%);
-    background-size: 300% 100%;
-    background-position: 120% 0;
-    mix-blend-mode: screen;
-    opacity: 0;
+    background:
+      linear-gradient(160deg, rgba(150, 175, 210, 0.16) 0%, rgba(60, 80, 110, 0.05) 40%, rgba(5, 10, 20, 0.42) 100%);
     pointer-events: none;
+    opacity: 0;
   }
-  .door-frame .piece, .door-leaf .piece { transform-box: fill-box; transform-origin: 50% 100%; }
-  .snow-cap { opacity: 0; }
+
+  /* Névoa da tempestade (também na frente da porta). */
+  .fog {
+    position: absolute;
+    left: -50%;
+    width: 200%;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .fog--a {
+    top: 35%;
+    height: 70%;
+    background:
+      radial-gradient(ellipse 18% 30% at 15% 50%, rgba(170, 190, 215, 0.16), transparent 70%),
+      radial-gradient(ellipse 22% 35% at 45% 60%, rgba(170, 190, 215, 0.14), transparent 70%),
+      radial-gradient(ellipse 20% 30% at 80% 45%, rgba(170, 190, 215, 0.15), transparent 70%);
+    animation: drift 26s linear infinite;
+  }
+  .fog--b {
+    top: 55%;
+    height: 50%;
+    background:
+      radial-gradient(ellipse 25% 40% at 25% 70%, rgba(150, 170, 200, 0.18), transparent 70%),
+      radial-gradient(ellipse 25% 40% at 70% 65%, rgba(150, 170, 200, 0.16), transparent 70%);
+    animation: drift 17s linear infinite reverse;
+  }
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(25%); } }
+  .vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    pointer-events: none;
+    background: radial-gradient(ellipse 75% 70% at 50% 55%, transparent 40%, rgba(2, 4, 8, 0.75) 100%);
+  }
 
   .door-hit {
     position: absolute;
     left: 50%;
-    top: 50%;
+    bottom: var(--door-base);
     width: var(--door-w);
     height: var(--door-h);
-    transform: translate(-50%, -50%);
-    z-index: 9;
+    margin-left: calc(var(--door-w) / -2);
+    z-index: 11;
     background: transparent;
     border: 0;
     border-radius: 45% 45% 4px 4px / 28% 28% 4px 4px;
     cursor: pointer;
   }
-  .door-hit:disabled { cursor: default; }
-  .door-hit:focus-visible { outline: 2px solid rgba(255, 210, 140, 0.9); outline-offset: 8px; }
-  .door-prompt {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(50% + var(--door-h) / 2 + 18px);
-    z-index: 9;
-    margin: 0;
-    text-align: center;
-    font-size: clamp(12px, 1.6vw, 15px);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: rgba(255, 228, 184, 0.92);
-    text-shadow: 0 0 18px rgba(255, 180, 90, 0.6), 0 2px 10px rgba(0, 0, 0, 0.9);
-    opacity: 0;
-    pointer-events: none;
-  }
+  .door-hit:disabled { cursor: default; pointer-events: none; }
+  .door-hit:focus-visible { outline: 2px solid rgba(255, 200, 130, 0.8); outline-offset: 8px; }
 
   .narrative {
     position: absolute;
     inset: 0;
-    z-index: 8;
+    z-index: 10;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 18px;
+    gap: 16px;
     padding: 0 8vw;
     text-align: center;
     pointer-events: none;
   }
   .narrative-line {
     margin: 0;
-    font-size: clamp(16px, 2.5vw, 22px);
-    line-height: 1.7;
-    color: rgba(255, 255, 255, 0.88);
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9);
+    font-size: clamp(15px, 2.3vw, 21px);
+    line-height: 1.6;
+    color: rgba(220, 230, 242, 0.88);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.95);
     opacity: 0;
     transform: translateY(10px);
-    animation: lineAppear 1s ease-out forwards;
+    animation: lineAppear 1.1s ease-out forwards;
   }
   .narrative-line--emphasis {
-    font-size: clamp(18px, 3vw, 26px);
+    font-size: clamp(17px, 2.8vw, 25px);
     font-weight: 600;
-    color: rgba(232, 196, 120, 0.97);
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9), 0 0 30px rgba(212, 176, 106, 0.35);
+    color: rgba(240, 200, 140, 0.96);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.95), 0 0 26px rgba(255, 170, 90, 0.25);
   }
   @keyframes lineAppear { to { opacity: 1; transform: translateY(0); } }
+  .caption, .door-prompt {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    margin: 0;
+    padding: 0 6vw;
+    text-align: center;
+    pointer-events: none;
+    opacity: 0;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.95);
+  }
+  .caption {
+    top: 9vh;
+    font-size: clamp(15px, 2.3vw, 21px);
+    color: rgba(220, 230, 242, 0.9);
+  }
+  .door-prompt {
+    bottom: calc(var(--door-base) - 7.5vh);
+    font-size: clamp(11px, 1.5vw, 14px);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(245, 214, 170, 0.9);
+  }
 
   .flash {
     position: absolute;
     inset: 0;
     z-index: 20;
-    background: radial-gradient(circle at 50% 50%, #fffdf7 0%, #fff0d4 45%, #ffd9a0 100%);
+    background: radial-gradient(circle at 50% 60%, #fff8ec 0%, #ffe6c2 45%, #ffcf96 100%);
     opacity: 0;
     pointer-events: none;
   }
 
-  .ui-controls {
-    position: absolute;
-    right: 24px;
-    bottom: 24px;
-    z-index: 30;
-    display: flex;
-    gap: 12px;
-  }
+  .ui-controls { position: absolute; right: 24px; bottom: 24px; z-index: 30; display: flex; gap: 12px; }
   .ui-btn {
-    background: rgba(10, 14, 21, 0.6);
+    background: rgba(8, 12, 20, 0.6);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(212, 176, 106, 0.3);
-    color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(160, 180, 210, 0.25);
+    color: rgba(225, 233, 244, 0.85);
     padding: 10px 18px;
     border-radius: 6px;
     font: 600 11px 'Cinzel', serif;
     letter-spacing: 1.5px;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    transition: background 0.3s, border-color 0.3s;
   }
-  .ui-btn:hover {
-    background: rgba(10, 14, 21, 0.8);
-    border-color: rgba(212, 176, 106, 0.6);
-    box-shadow: 0 0 20px rgba(212, 176, 106, 0.3);
-  }
-  .ui-btn:focus-visible { outline: 2px solid rgba(255, 210, 140, 0.9); outline-offset: 2px; }
+  .ui-btn:hover { background: rgba(8, 12, 20, 0.8); border-color: rgba(160, 180, 210, 0.5); }
+  .ui-btn:focus-visible { outline: 2px solid rgba(255, 200, 130, 0.8); outline-offset: 2px; }
   .ui-btn-sound { padding: 10px 12px; }
   .sound-icon { display: block; }
   .sound-waves { opacity: 0.3; transition: opacity 0.3s; }
@@ -477,10 +578,10 @@ const rivets = straps.flatMap((s) =>
   }
 
   @media (max-width: 768px) {
-    .welcome-experience { --door-h: min(56vh, 470px); }
-    .narrative { gap: 14px; }
-    .narrative-line { font-size: clamp(14px, 4vw, 18px); }
-    .narrative-line--emphasis { font-size: clamp(16px, 4.5vw, 22px); }
+    .welcome-experience { --door-h: min(50vh, 430px); --door-base: 15vh; --horizon: 58%; }
+    .narrative { gap: 12px; }
+    .narrative-line { font-size: clamp(14px, 4vw, 17px); }
+    .narrative-line--emphasis { font-size: clamp(16px, 4.6vw, 21px); }
     .ui-controls { right: 16px; bottom: 16px; gap: 8px; }
     .ui-btn { padding: 8px 14px; font-size: 10px; }
   }
@@ -503,15 +604,17 @@ const rivets = straps.flatMap((s) =>
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   const rand = (min: number, max: number) => min + Math.random() * (max - min);
 
-  // ── Canvas: neve de fundo + partículas da montagem ────────────
-  const snowCanvas = byId<HTMLCanvasElement>('snow-canvas');
-  const fxCanvas = byId<HTMLCanvasElement>('fx-canvas');
-  const snowCtx = snowCanvas.getContext('2d');
-  const fxCtx = fxCanvas.getContext('2d');
-
-  type Flake = { x: number; y: number; r: number; vy: number; vx: number; a: number };
+  // ── Nevasca: duas camadas (atrás e na frente da porta) ─────────
+  // `storm.wind` cresce a cada frase e acalma quando a luz aparece.
+  const storm = { wind: 0.6, gust: 0 };
+  type Flake = { x: number; y: number; r: number; speed: number; drift: number; a: number; depth: number };
   type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; ember: boolean };
-  let flakes: Flake[] = [];
+  const back = byId<HTMLCanvasElement>('snow-back');
+  const front = byId<HTMLCanvasElement>('snow-front');
+  const backCtx = back.getContext('2d');
+  const frontCtx = front.getContext('2d');
+  let backFlakes: Flake[] = [];
+  let frontFlakes: Flake[] = [];
   let bits: Bit[] = [];
 
   function sizeCanvas(canvas: HTMLCanvasElement) {
@@ -521,35 +624,67 @@ const rivets = straps.flatMap((s) =>
     canvas.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  const flake = (depth: number): Flake => ({
+    x: Math.random() * innerWidth,
+    y: Math.random() * innerHeight,
+    r: depth * rand(0.6, 1.4),
+    speed: rand(0.6, 1.2) * depth,
+    drift: rand(-0.3, 0.3),
+    a: rand(0.35, 0.85) * Math.min(1, 0.55 + depth * 0.25),
+    depth,
+  });
+
   function seedSnow() {
-    const count = Math.min(170, Math.floor(innerWidth / 8));
-    flakes = Array.from({ length: count }, () => ({
-      x: Math.random() * innerWidth,
-      y: Math.random() * innerHeight,
-      r: rand(0.5, 2.5),
-      vy: rand(0.25, 0.85),
-      vx: rand(-0.1, 0.3),
-      a: rand(0.3, 0.8),
-    }));
+    const area = innerWidth * innerHeight;
+    backFlakes = Array.from({ length: Math.min(260, Math.floor(area / 6000)) }, () => flake(rand(0.6, 1.3)));
+    frontFlakes = Array.from({ length: Math.min(70, Math.floor(area / 22000)) }, () => flake(rand(1.8, 3.2)));
   }
 
-  // Brilho pré-renderizado (desenhar imagem é bem mais barato que gradiente por partícula).
+  function drawFlakes(ctx: CanvasRenderingContext2D, flakes: Flake[]) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    const wind = storm.wind + storm.gust;
+    ctx.strokeStyle = '#e6edf6';
+    ctx.fillStyle = '#e6edf6';
+    for (const f of flakes) {
+      const vx = (f.drift + wind * 2.2) * f.depth;
+      const vy = f.speed * (1 + wind * 0.6);
+      f.x += vx;
+      f.y += vy;
+      if (f.y > innerHeight + 10) { f.y = -10; f.x = Math.random() * innerWidth; }
+      if (f.x > innerWidth + 20) f.x = -20; else if (f.x < -20) f.x = innerWidth + 20;
+      ctx.globalAlpha = f.a;
+      if (wind > 1.4) {
+        // Vento forte: os flocos viram riscos na direção do vento.
+        const k = Math.min(3.5, wind) * 1.4;
+        ctx.lineWidth = f.r * 1.3;
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(f.x - vx * k, f.y - vy * k);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   const glowSprite = (() => {
     const c = document.createElement('canvas');
     c.width = c.height = 64;
     const g = c.getContext('2d');
     if (g) {
       const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grad.addColorStop(0, 'rgba(255, 236, 200, 1)');
-      grad.addColorStop(0.35, 'rgba(255, 180, 90, 0.6)');
-      grad.addColorStop(1, 'rgba(255, 140, 60, 0)');
+      grad.addColorStop(0, 'rgba(255, 220, 170, 1)');
+      grad.addColorStop(0.4, 'rgba(255, 160, 80, 0.5)');
+      grad.addColorStop(1, 'rgba(255, 120, 50, 0)');
       g.fillStyle = grad;
       g.fillRect(0, 0, 64, 64);
     }
     return c;
   })();
 
-  /** Ponto do desenho da porta (coordenadas do viewBox) em pixels de tela. */
   function toScreen(x: number, y: number) {
     const ctm = frameSvg.getScreenCTM();
     if (!ctm) return { x: innerWidth / 2, y: innerHeight / 2 };
@@ -557,153 +692,187 @@ const rivets = straps.flatMap((s) =>
     return { x: p.x, y: p.y };
   }
 
-  /** Lufada de neve e fagulhas saindo do chão (quando a porta brota). */
+  /** Neve levantada do chão quando as peças brotam (poucas fagulhas). */
   function burst(count: number, x0: number, x1: number, y: number, power = 1) {
     for (let i = 0; i < count; i++) {
       const p = toScreen(rand(x0, x1), y);
-      const ember = Math.random() < 0.35;
+      const ember = Math.random() < 0.12;
       bits.push({
         x: p.x,
         y: p.y,
-        vx: rand(-2.2, 2.2) * power,
-        vy: rand(-4.5, -1.2) * power,
+        vx: rand(-2, 2) * power,
+        vy: rand(-3.6, -0.8) * power,
         life: 0,
-        max: rand(50, 95),
-        size: ember ? rand(1.2, 2.4) : rand(1.5, 3.5),
+        max: rand(45, 85),
+        size: ember ? rand(1, 1.8) : rand(1.4, 3.2),
         ember,
       });
     }
   }
 
-  function frame() {
-    if (snowCtx) {
-      snowCtx.clearRect(0, 0, innerWidth, innerHeight);
-      snowCtx.fillStyle = '#fff';
-      for (const f of flakes) {
-        f.y += f.vy; f.x += f.vx;
-        if (f.y > innerHeight) { f.y = -8; f.x = Math.random() * innerWidth; }
-        if (f.x > innerWidth) f.x = 0; else if (f.x < 0) f.x = innerWidth;
-        snowCtx.globalAlpha = f.a;
-        snowCtx.beginPath();
-        snowCtx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
-        snowCtx.fill();
+  function drawBits(ctx: CanvasRenderingContext2D) {
+    bits = bits.filter((b) => b.life < b.max);
+    for (const b of bits) {
+      b.life++;
+      b.x += b.vx + storm.wind * 0.8;
+      b.y += b.vy;
+      b.vy += b.ember ? -0.01 : 0.07;
+      b.vx *= 0.98;
+      const alpha = 1 - b.life / b.max;
+      if (b.ember) {
+        const r = b.size * 4;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.8;
+        ctx.drawImage(glowSprite, b.x - r, b.y - r, r * 2, r * 2);
+        ctx.globalCompositeOperation = 'source-over';
+      } else {
+        ctx.globalAlpha = alpha * 0.75;
+        ctx.fillStyle = '#dfe7f1';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+        ctx.fill();
       }
-      snowCtx.globalAlpha = 1;
     }
-    if (fxCtx) {
-      fxCtx.clearRect(0, 0, innerWidth, innerHeight);
-      bits = bits.filter((b) => b.life < b.max);
-      for (const b of bits) {
-        b.life++;
-        b.x += b.vx;
-        b.y += b.vy;
-        b.vy += b.ember ? -0.01 : 0.06; // fagulha sobe, neve cai
-        b.vx *= 0.985;
-        const alpha = 1 - b.life / b.max;
-        if (b.ember) {
-          const r = b.size * 4;
-          fxCtx.globalCompositeOperation = 'lighter';
-          fxCtx.globalAlpha = alpha;
-          fxCtx.drawImage(glowSprite, b.x - r, b.y - r, r * 2, r * 2);
-          fxCtx.globalCompositeOperation = 'source-over';
-        } else {
-          fxCtx.globalAlpha = alpha * 0.8;
-          fxCtx.fillStyle = '#eef3fb';
-          fxCtx.beginPath();
-          fxCtx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
-          fxCtx.fill();
-        }
-      }
-      fxCtx.globalAlpha = 1;
+    ctx.globalAlpha = 1;
+  }
+
+  function frame() {
+    if (backCtx) drawFlakes(backCtx, backFlakes);
+    if (frontCtx) {
+      drawFlakes(frontCtx, frontFlakes);
+      drawBits(frontCtx);
     }
     requestAnimationFrame(frame);
   }
 
   function resize() {
-    sizeCanvas(snowCanvas);
-    sizeCanvas(fxCanvas);
+    sizeCanvas(back);
+    sizeCanvas(front);
     seedSnow();
   }
 
-  // ── Montagem: as peças brotam do chão e se encaixam ───────────
+  // Rajadas: o vento vem em ondas.
+  function gusts() {
+    gsap.to(storm, {
+      gust: () => rand(0.4, 1.1) * Math.min(1, storm.wind / 1.5),
+      duration: () => rand(0.6, 1.2),
+      yoyo: true,
+      repeat: -1,
+      repeatDelay: 1.2,
+      repeatRefresh: true,
+      ease: 'sine.inOut',
+    });
+  }
+
+  // ── Câmera: de longe (porta minúscula no horizonte) até perto ──
+  /** Escala e deslocamento da porta quando ainda está longe, no horizonte. */
+  function farPose() {
+    const anchor = byId('door-anchor');
+    const rect = anchor.getBoundingClientRect();
+    const baseY = rect.bottom; // base atual (perto)
+    const horizonY = innerHeight * (innerWidth < 768 ? 0.58 : 0.6) + innerHeight * 0.02;
+    return { scale: 0.16, y: horizonY - baseY };
+  }
+
+  // ── Peças da porta ────────────────────────────────────────────
   const q = (sel: string) => gsap.utils.toArray<SVGGraphicsElement>(sel);
   const sills = q('.piece.sill');
   const jambs = q('.piece.jamb').sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
   const planks = q('.piece.plank');
+  const windowsEls = q('.piece.window');
   const irons = q('.piece.iron');
   const handles = q('.piece.handle');
   const voussoirs = q('.piece.voussoir:not(.keystone)').sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
   const keystone = q('.piece.keystone');
+  const allPieces = [...sills, ...jambs, ...planks, ...windowsEls, ...irons, ...handles, ...voussoirs, ...keystone];
 
-  /** Estado "ainda no chão": abaixo, girada, pequena e invisível. */
+  /** "Ainda sob a neve": abaixo do chão, girada, pequena e invisível. */
   function scatter(el: Element, depth = 1) {
     gsap.set(el, {
       transformOrigin: '50% 100%',
-      x: rand(-40, 40) * depth,
-      y: rand(70, 170) * depth,
-      rotation: rand(-70, 70),
-      scale: rand(0.25, 0.6),
+      x: rand(-30, 30) * depth,
+      y: rand(60, 140) * depth,
+      rotation: rand(-55, 55),
+      scale: rand(0.3, 0.6),
       opacity: 0,
     });
   }
+  const snap = { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1, ease: 'back.out(1.6)' };
 
-  const snap = { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1, ease: 'back.out(1.7)' };
-
-  function buildAssembly(): gsap.core.Timeline {
+  function buildScene(): gsap.core.Timeline {
     [...sills, ...jambs, ...voussoirs, ...keystone].forEach((el) => scatter(el));
-    planks.forEach((el) => scatter(el, 1.4));
-    [...irons, ...handles].forEach((el) => scatter(el, 0.7));
+    planks.forEach((el) => scatter(el, 1.3));
+    [...windowsEls, ...irons, ...handles].forEach((el) => scatter(el, 0.7));
+
+    const far = farPose();
+    gsap.set('#door-anchor', { scale: far.scale, y: far.y });
+    gsap.set('#ground', { scaleY: 1 });
+    gsap.set(['#fog-a', '#fog-b'], { opacity: 0.45 });
 
     const tl = gsap.timeline({ paused: true });
-    tl.to('#narrative-text', { opacity: 0, y: -20, duration: 0.9, ease: 'power2.in' }, 0)
-      .to('#door-floor', { opacity: 0.7, duration: 1, ease: 'sine.out' }, 0.5)
-      .add(() => burst(innerWidth < 600 ? 50 : 80, 30, 270, 455), 1.25)
-      .to(sills, { ...snap, duration: 0.45, stagger: 0.05 }, 1.2)
-      .to(jambs, { ...snap, duration: 0.5, stagger: 0.07 }, 1.3)
-      .to(planks, { ...snap, duration: 0.6, stagger: { each: 0.05, from: 'edges' } }, 1.4)
-      .to(voussoirs, { ...snap, duration: 0.45, stagger: 0.06 }, 1.75)
-      .to([...irons, ...handles], { ...snap, duration: 0.4, stagger: 0.04 }, 1.95)
-      // A chave do arco chega por último, com um tranco.
-      .to(keystone, { ...snap, duration: 0.5, ease: 'back.out(3)' }, 2.25)
-      .add(() => burst(18, 135, 165, 95, 0.6), 2.5)
-      .fromTo('#door-float', { y: 0 }, { y: 3, duration: 0.07, yoyo: true, repeat: 3, ease: 'none' }, 2.55)
-      .to('#door-glint', { opacity: 1, duration: 0.1 }, 2.7)
-      .to('#door-glint', { backgroundPosition: '-20% 0', duration: 0.9, ease: 'power2.inOut' }, 2.7)
-      .to('#door-glint', { opacity: 0, duration: 0.3 }, 3.4)
-      .to('.snow-cap', { opacity: 1, duration: 1.4, ease: 'sine.out' }, 2.9)
-      .to('#door-halo', { opacity: 1, duration: 1.5, ease: 'sine.out' }, 2.9)
-      .to(['#door-sill-light', '#door-seam'], { opacity: 1, duration: 1.2, ease: 'sine.out' }, 3.1)
-      .to('#door-prompt', { opacity: 1, duration: 1.2 }, 3.8);
+    // 0–7 s: a nevasca piora a cada frase.
+    tl.to(storm, { wind: 2.6, duration: 7, ease: 'power1.in' }, 0)
+      .to(['#fog-a', '#fog-b'], { opacity: 1, duration: 7 }, 0)
+      // 7.2 s: uma luz, lá longe.
+      .to('#lure', { opacity: 1, duration: 1.4, ease: 'sine.out' }, 7.2)
+      .to('#door-spill', { opacity: 0.6, duration: 1.4 }, 7.4)
+      .to('#narrative-text', { opacity: 0, y: -16, duration: 1, ease: 'power2.in' }, 8.8)
+      // 9–14 s: você caminha até ela; o vento acalma ao chegar.
+      .to(storm, { wind: 0.8, duration: 4.5, ease: 'sine.inOut' }, 9.2)
+      .to('#door-anchor', { scale: 1, y: 0, duration: 5, ease: 'power2.inOut' }, 9.2)
+      .to('#ridge-far', { scale: 1.05, duration: 5, ease: 'power2.inOut' }, 9.2)
+      .to('#ridge-near', { scale: 1.12, y: '2%', duration: 5, ease: 'power2.inOut' }, 9.2)
+      .to('#ground', { scaleY: 1.15, duration: 5, ease: 'power2.inOut' }, 9.2)
+      .to(['#fog-a', '#fog-b'], { opacity: 0.7, duration: 4 }, 9.5)
+      .to('#caption', { opacity: 1, duration: 1 }, 11.2)
+      .to('#caption', { opacity: 0, duration: 0.8 }, 14.2)
+      // 11.6 s: a porta se ergue da neve, em volta da luz.
+      .add(() => burst(innerWidth < 600 ? 40 : 70, 30, 270, 455), 11.6)
+      .to(sills, { ...snap, duration: 0.45, stagger: 0.05 }, 11.6)
+      .to(jambs, { ...snap, duration: 0.5, stagger: 0.07 }, 11.7)
+      .to(planks, { ...snap, duration: 0.6, stagger: { each: 0.05, from: 'edges' } }, 11.8)
+      .to('#door-grade', { opacity: 1, duration: 1.2 }, 11.9)
+      .to('#lure', { opacity: 0.35, scale: 0.6, duration: 0.8 }, 12.0)
+      .to(voussoirs, { ...snap, duration: 0.45, stagger: 0.06 }, 12.15)
+      .to([...windowsEls, ...irons, ...handles], { ...snap, duration: 0.4, stagger: 0.04 }, 12.35)
+      .to(keystone, { ...snap, duration: 0.5, ease: 'back.out(3)' }, 12.65)
+      .add(() => burst(14, 135, 165, 95, 0.5), 12.9)
+      .fromTo('#door-float', { y: 0 }, { y: 2, duration: 0.07, yoyo: true, repeat: 3, ease: 'none' }, 12.95)
+      .to('#lure', { opacity: 0, duration: 1 }, 13.0)
+      .to('.snow-cap', { opacity: 1, duration: 1.2, ease: 'sine.out' }, 13.0)
+      .to(['#door-sill-light', '#door-seam'], { opacity: 0.85, duration: 1.2 }, 13.2)
+      .to('#door-prompt', { opacity: 1, duration: 1.2 }, 14.6);
     return tl;
   }
 
-  /** Luz de lareira escapando pelas frestas, tremulando. */
+  /** Luz da lareira tremulando pelas frestas e pelas janelinhas. */
   function idle() {
-    gsap.to(['#door-sill-light', '#door-seam'], {
-      opacity: () => rand(0.55, 1),
-      duration: () => rand(0.12, 0.35),
+    gsap.to(['#door-sill-light', '#door-seam', '.window-glass'], {
+      opacity: () => rand(0.65, 1),
+      duration: () => rand(0.12, 0.4),
       repeat: -1,
       repeatRefresh: true,
       ease: 'sine.inOut',
     });
+    gsap.to('#door-spill', { opacity: () => rand(0.45, 0.7), duration: () => rand(0.3, 0.7), repeat: -1, repeatRefresh: true });
     gsap.to('#door-prompt', { opacity: 0.45, duration: 1.6, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1 });
   }
 
   function openDoor(): Promise<void> {
     return new Promise((resolve) => {
-      gsap.killTweensOf(['#door-sill-light', '#door-seam', '#door-prompt']);
+      gsap.killTweensOf(['#door-sill-light', '#door-seam', '#door-prompt', '#door-spill', '.window-glass']);
       const tl = gsap.timeline({ onComplete: resolve });
       tl.to('#door-prompt', { opacity: 0, duration: 0.3 }, 0)
-        .to('.ring', { attr: { stroke: '#e9b45f' }, duration: 0.25 }, 0)
+        .to('.ring', { attr: { stroke: '#b98a4c' }, duration: 0.25 }, 0)
+        .to(storm, { wind: 0.3, duration: 1 }, 0)
         .to('#door-inner-light', { opacity: 1, duration: 0.35 }, 0.1)
-        // Entreabre, como na referência: a luz é que invade.
         .to('#leaf-left', { rotationY: 26, duration: 0.9, ease: 'power2.out' }, 0.15)
         .to('#leaf-right', { rotationY: -26, duration: 0.9, ease: 'power2.out' }, 0.15)
         .to('#door-seam', { opacity: 1, width: '18%', marginLeft: '-9%', duration: 0.6, ease: 'power2.in' }, 0.15)
-        .to('#door-halo', { opacity: 1, scale: 1.8, duration: 0.9, ease: 'power2.in' }, 0.2)
-        .add(() => burst(30, 120, 180, 300, 0.8), 0.3)
-        .to('#door-float', { scale: 1.35, duration: 1.2, ease: 'power2.in' }, 0.3)
-        .to('#flash', { opacity: 1, duration: 0.55, ease: 'power2.in' }, 0.6)
+        .to('#door-spill', { opacity: 1, scale: 1.6, duration: 0.8, ease: 'power2.in' }, 0.2)
+        .to('#door-grade', { opacity: 0, duration: 0.6 }, 0.3)
+        .to('#door-anchor', { scale: 1.35, duration: 1.2, ease: 'power2.in' }, 0.3)
+        .to('#flash', { opacity: 1, duration: 0.6, ease: 'power2.in' }, 0.6)
         .to({}, { duration: 0.35 });
     });
   }
@@ -712,19 +881,19 @@ const rivets = straps.flatMap((s) =>
   async function runExperience() {
     resize();
     requestAnimationFrame(frame);
-    announce('Tempestade de neve. Uma porta de taverna surge à sua frente.');
+    gusts();
+    announce('Um viajante perdido na nevasca. Ao longe, uma luz.');
     audioSystem.init();
-    audioSystem.transitionTo('tavern');
+    audioSystem.transitionTo('storm');
 
-    const assembly = buildAssembly();
+    const scene = buildScene();
     let opened = false;
 
     const open = async () => {
       if (opened) return;
       opened = true;
       doorBtn.disabled = true;
-      // Tocou antes de terminar a montagem: completa na hora e abre.
-      if (assembly.progress() < 1) assembly.progress(1);
+      if (scene.progress() < 1) scene.progress(1);
       if (!audioSystem.ready) audioSystem.init();
       audioSystem.setMuted(false, 600);
       audioSystem.transitionTo('door-open', 300);
@@ -747,21 +916,22 @@ const rivets = straps.flatMap((s) =>
       }
     });
 
-    if (reducedMotion) {
-      assembly.progress(1);
-      doorBtn.disabled = false;
-      announce('Uma porta de taverna está à sua frente. Toque para entrar.');
-      return;
-    }
-
-    // As frases levam ~7 s; a porta brota logo depois de "Uma luz surge à sua frente".
-    await wait(7600);
-    doorBtn.disabled = false;
-    assembly.eventCallback('onComplete', () => {
+    scene.eventCallback('onComplete', () => {
       announce('Uma porta de taverna está à sua frente. Toque para entrar.');
       idle();
     });
-    assembly.play();
+
+    if (reducedMotion) {
+      scene.progress(1);
+      storm.wind = 0.5;
+      doorBtn.disabled = false;
+      return;
+    }
+
+    scene.play();
+    // A porta já pode ser tocada assim que você começa a se aproximar.
+    await wait(9200);
+    doorBtn.disabled = false;
   }
 
   skipBtn?.addEventListener('click', () => {
